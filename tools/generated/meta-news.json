@@ -1,0 +1,103 @@
+{
+  "type": "news",
+  "sourceSlug": "ar-car-app-live-on-stores",
+  "sourceSha": "dc68c27657aa",
+  "sourcePostId": "2133",
+  "commonOwnCss": null,
+  "poolSize": 183,
+  "totalInDir": 206,
+  "bodyClassRaw": "wp-singular post-template-default single single-post postid-2133 single-format-standard wp-custom-logo wp-theme-page-builder-framework wp-child-theme-page-builder-framework-child everest-forms-no-js wpbf wpbf-ar-car-app-live-on-stores wpbf-sidebar-right elementor-default elementor-kit-7",
+  "articleClassRaw": "wpbf-post-layout-default wpbf-post-style-boxed post-2133 post type-post status-publish format-standard has-post-thumbnail hentry category-blog tag-android tag-app-store tag-apple tag-ar-car tag-augmented-reality tag-google-play tag-smart-phone tag-virtual-reality wpbf-post",
+  "wrapperClassRaw": null,
+  "regions": [
+    {
+      "name": "title",
+      "chars": 83
+    },
+    {
+      "name": "canonical",
+      "chars": 32
+    },
+    {
+      "name": "description",
+      "chars": 196
+    },
+    {
+      "name": "og:title",
+      "chars": 69
+    },
+    {
+      "name": "og:description",
+      "chars": 230
+    },
+    {
+      "name": "og:url",
+      "chars": 37
+    },
+    {
+      "name": "og:image blok",
+      "chars": 200
+    },
+    {
+      "name": "published",
+      "chars": 76
+    },
+    {
+      "name": "modified",
+      "chars": 75
+    },
+    {
+      "name": "json-ld",
+      "chars": 2109
+    },
+    {
+      "name": "body class",
+      "chars": 301
+    },
+    {
+      "name": "article etiketi",
+      "chars": 305
+    },
+    {
+      "name": "h1",
+      "chars": 81
+    },
+    {
+      "name": "govde",
+      "chars": 762
+    },
+    {
+      "name": "wp-json linki (silindi)",
+      "chars": 120
+    },
+    {
+      "name": "elementor post config",
+      "chars": 136
+    },
+    {
+      "name": "page_permalink",
+      "chars": 72
+    }
+  ],
+  "leftover": {
+    "postId": 0,
+    "slug": 0,
+    "placeholders": [
+      "{{HEAD_TITLE}}",
+      "{{CANONICAL}}",
+      "{{DESCRIPTION}}",
+      "{{OG_TITLE}}",
+      "{{OG_IMAGE_META}}",
+      "{{PUBLISHED_TIME}}",
+      "{{MODIFIED_TIME}}",
+      "{{JSONLD}}",
+      "{{BODY_CLASS}}",
+      "{{POST_ID}}",
+      "{{ARTICLE_CLASS}}",
+      "{{ENTRY_TITLE}}",
+      "{{ENTRY_CONTENT}}",
+      "{{POST_TITLE_URLENC}}",
+      "{{PERMALINK}}"
+    ]
+  }
+}

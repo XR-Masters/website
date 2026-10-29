@@ -1,0 +1,99 @@
+{
+  "type": "projects",
+  "sourceSlug": "castrol-product-visualization",
+  "sourceSha": "d50fba759eaf",
+  "sourcePostId": "8230",
+  "commonOwnCss": "7864",
+  "poolSize": 50,
+  "totalInDir": 52,
+  "bodyClassRaw": "wp-singular xperiences-template-default single single-xperiences postid-8230 wp-custom-logo wp-theme-page-builder-framework wp-child-theme-page-builder-framework-child everest-forms-no-js wpbf wpbf-castrol-product-visualization wpbf-sidebar-right elementor-default elementor-template-full-width elementor-kit-7 elementor-page-7864",
+  "articleClassRaw": null,
+  "wrapperClassRaw": "elementor elementor-7864 elementor-location-single post-8230 xperiences type-xperiences status-publish hentry wpbf-post",
+  "regions": [
+    {
+      "name": "title",
+      "chars": 80
+    },
+    {
+      "name": "canonical",
+      "chars": 32
+    },
+    {
+      "name": "description",
+      "chars": 104
+    },
+    {
+      "name": "og:title",
+      "chars": 66
+    },
+    {
+      "name": "og:description",
+      "chars": 111
+    },
+    {
+      "name": "og:url",
+      "chars": 37
+    },
+    {
+      "name": "og:image blok",
+      "chars": 211
+    },
+    {
+      "name": "published",
+      "chars": 76
+    },
+    {
+      "name": "modified",
+      "chars": 75
+    },
+    {
+      "name": "json-ld",
+      "chars": 1928
+    },
+    {
+      "name": "body class",
+      "chars": 344
+    },
+    {
+      "name": "elementor sarmalayici",
+      "chars": 192
+    },
+    {
+      "name": "h1",
+      "chars": 93
+    },
+    {
+      "name": "govde",
+      "chars": 440
+    },
+    {
+      "name": "elementor post config",
+      "chars": 127
+    },
+    {
+      "name": "page_permalink",
+      "chars": 87
+    }
+  ],
+  "leftover": {
+    "postId": 0,
+    "slug": 0,
+    "placeholders": [
+      "{{HEAD_TITLE}}",
+      "{{CANONICAL}}",
+      "{{DESCRIPTION}}",
+      "{{OG_TITLE}}",
+      "{{OG_IMAGE_META}}",
+      "{{PUBLISHED_TIME}}",
+      "{{MODIFIED_TIME}}",
+      "{{JSONLD}}",
+      "{{BODY_CLASS}}",
+      "{{WRAPPER_CLASS}}",
+      "{{ENTRY_TITLE}}",
+      "{{ENTRY_CONTENT}}",
+      "{{POST_ID}}",
+      "{{POST_TITLE_URLENC}}",
+      "{{PERMALINK}}"
+    ]
+  }
+}

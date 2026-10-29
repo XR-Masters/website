@@ -1,0 +1,74 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://www.xr-masters.com/#/schema/WebSite",
+      "url": "https://www.xr-masters.com/",
+      "name": "VR Masters, LLC (DBA: XR Masters)",
+      "alternateName": "XR Masters",
+      "inLanguage": "en",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://www.xr-masters.com/search/{search_term_string}/"
+        },
+        "query-input": "required name=search_term_string"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "@id": "https://www.xr-masters.com/#/schema/Organization",
+        "name": "XR Masters",
+        "url": "https://www.xr-masters.com/",
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://www.xr-masters.com/wp-content/uploads/2020/12/cropped-XR-Masters-Logo-Guide-v1-1.png",
+          "contentUrl": "https://www.xr-masters.com/wp-content/uploads/2020/12/cropped-XR-Masters-Logo-Guide-v1-1.png",
+          "width": 88,
+          "height": 88
+        }
+      }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://www.xr-masters.com/xperiences/castrol-product-visualization/",
+      "url": "https://www.xr-masters.com/xperiences/castrol-product-visualization/",
+      "name": "Castrol Product Visualization • VR Masters, LLC (DBA: XR Masters)",
+      "description": "Castol Edge and Castrol Magnatec packs in Turkey are now AR enabled.",
+      "inLanguage": "en",
+      "isPartOf": {
+        "@id": "https://www.xr-masters.com/#/schema/WebSite"
+      },
+      "breadcrumb": {
+        "@type": "BreadcrumbList",
+        "@id": "https://www.xr-masters.com/#/schema/BreadcrumbList",
+        "itemListElement": [
+          {
+            "@type": "ListItem",
+            "position": 1,
+            "item": "https://www.xr-masters.com/",
+            "name": "VR Masters, LLC (DBA: XR Masters)"
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "item": "https://www.xr-masters.com/xperiences/",
+            "name": "Xperiences"
+          },
+          {
+            "@type": "ListItem",
+            "position": 3,
+            "name": "Castrol Product Visualization"
+          }
+        ]
+      },
+      "potentialAction": {
+        "@type": "ReadAction",
+        "target": "https://www.xr-masters.com/xperiences/castrol-product-visualization/"
+      },
+      "datePublished": "2023-03-20T07:44:46+00:00",
+      "dateModified": "2023-03-21T11:11:27+00:00"
+    }
+  ]
+}

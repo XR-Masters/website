@@ -1,0 +1,106 @@
+{
+  "sourceSlug": "mr-companies-ar-assisted-maintenance-procedure",
+  "sourceSha": "de759b6c1cb5",
+  "sourceChars": 154579,
+  "templateChars": 150100,
+  "sourcePostId": "7579",
+  "sourceSlug2": "mr-companies-ar-assisted-maintenance-procedure",
+  "bodyClassRaw": "wp-singular post-template-default single single-post postid-7579 single-format-standard wp-custom-logo wp-theme-page-builder-framework wp-child-theme-page-builder-framework-child everest-forms-no-js wpbf wpbf-mr-companies-ar-assisted-maintenance-procedure wpbf-sidebar-right elementor-default elementor-kit-7",
+  "articleClassRaw": "wpbf-post-layout-default wpbf-post-style-boxed post-7579 post type-post status-publish format-standard has-post-thumbnail hentry category-blog category-video-blog wpbf-post",
+  "regions": [
+    {
+      "name": "title",
+      "chars": 102,
+      "placeholder": "<title>{{HEAD_TITLE}}</title>"
+    },
+    {
+      "name": "canonical",
+      "chars": 32,
+      "placeholder": "<link rel=\"canonical\" href=\"{{CANONICAL}}\">"
+    },
+    {
+      "name": "description",
+      "chars": 190,
+      "placeholder": "<meta name=\"description\" content=\"{{DESCRIPTION}}\">"
+    },
+    {
+      "name": "og:title",
+      "chars": 88,
+      "placeholder": "<meta property=\"og:title\" content=\"{{OG_TITLE}}\">"
+    },
+    {
+      "name": "og:description",
+      "chars": 235,
+      "placeholder": "<meta property=\"og:description\" content=\"{{DESCRIPTION}}\">"
+    },
+    {
+      "name": "og:url",
+      "chars": 37,
+      "placeholder": "<meta property=\"og:url\" content=\"{{CANONICAL}}\">"
+    },
+    {
+      "name": "og:image blok",
+      "chars": 204,
+      "placeholder": "{{OG_IMAGE_META}}\n"
+    },
+    {
+      "name": "published",
+      "chars": 76,
+      "placeholder": "<meta property=\"article:published_time\" content=\"{{PUBLISHED_TIME}}\">"
+    },
+    {
+      "name": "modified",
+      "chars": 75,
+      "placeholder": "<meta property=\"article:modified_time\" content=\"{{MODIFIED_TIME}}\">"
+    },
+    {
+      "name": "json-ld",
+      "chars": 2198,
+      "placeholder": "<script type=\"application/ld+json\" class=\"xrm-schema\">{{JSONLD}}</script>"
+    },
+    {
+      "name": "body class",
+      "chars": 322,
+      "placeholder": "<body class=\"{{BODY_CLASS}}\""
+    },
+    {
+      "name": "article etiketi",
+      "chars": 204,
+      "placeholder": "<article id=\"post-{{POST_ID}}\" class=\"{{ARTICLE_CLASS}}\""
+    },
+    {
+      "name": "h1",
+      "chars": 101,
+      "placeholder": "<h1 class=\"entry-title\" itemprop=\"headline\">{{ENTRY_TITLE}}</h1>"
+    },
+    {
+      "name": "entry-content govde",
+      "chars": 863,
+      "placeholder": "{{ENTRY_CONTENT}}"
+    },
+    {
+      "name": "wp-json alternate linki (silindi)",
+      "chars": 120,
+      "placeholder": ""
+    },
+    {
+      "name": "elementor post config",
+      "chars": 153,
+      "placeholder": "\"post\":{\"id\":{{POST_ID}},\"title\":\"{{POST_TITLE_URLENC}}\""
+    },
+    {
+      "name": "page_permalink",
+      "chars": 93,
+      "placeholder": "\"page_permalink\":\"{{PERMALINK}}\""
+    },
+    {
+      "name": "WP Rocket kuyrugu (silindi)",
+      "chars": 0,
+      "placeholder": "-"
+    }
+  ],
+  "leftover": {
+    "postId": 0,
+    "slug": 0
+  }
+}

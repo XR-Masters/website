@@ -1,0 +1,25 @@
+# bagimliliklar
+node_modules/
+
+# LOKAL kimlik bilgileri - asla repoya girmez
+tools/lib/auth.local.js
+
+# Cloudflare Worker secret'lari
+.dev.vars
+worker/.dev.vars
+.env
+.env.*
+
+# yarim kalan indirmeler / gecici
+*.part
+tools/generated/panel-ui.png
+tools/generated/*.tmp
+
+# isletim sistemi
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# editor
+.vscode/
+.idea/

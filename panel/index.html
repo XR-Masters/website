@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data: blob:; style-src 'self';
+               script-src 'self'; frame-src 'self'; connect-src 'self'">
+<title>XR Masters - Blog Paneli</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- giris ekrani -->
+<section id="login" class="login">
+  <div class="login-box">
+    <h1>XR&nbsp;Masters<span>İçerik Paneli</span></h1>
+    <form id="login-form" autocomplete="on">
+      <label>E-posta
+        <input id="l-email" class="input" type="email" required
+               autocomplete="username" placeholder="ornek@xr-masters.com">
+      </label>
+      <label>Şifre
+        <input id="l-pass" class="input" type="password" required
+               autocomplete="current-password" placeholder="••••••••">
+      </label>
+      <button id="btn-login" class="btn btn-primary btn-lg" type="submit">Giriş yap</button>
+    </form>
+    <p class="hint" id="login-hint"></p>
+    <p class="hint err-text" id="login-error" hidden></p>
+  </div>
+</section>
+
+<!-- uygulama -->
+<div id="app" hidden>
+  <header class="topbar">
+    <div class="brand">XR&nbsp;Masters <span>Blog Paneli</span></div>
+    <div class="spacer"></div>
+    <span id="mode-badge" class="badge"></span>
+    <div class="user">
+      <div id="avatar" class="avatar"></div>
+      <span id="username"></span>
+    </div>
+    <button id="btn-logout" class="btn btn-ghost">Çıkış</button>
+  </header>
+
+  <!-- liste -->
+  <main id="view-list" class="view">
+    <div class="view-head">
+      <h2>İçerikler <span id="count" class="muted"></span></h2>
+      <div class="row">
+        <select id="filter-cat" class="input"></select>
+        <input id="search" type="search" placeholder="Başlıkta ara..." class="input">
+        <button id="btn-new" class="btn btn-primary">+ Yeni içerik</button>
+      </div>
+    </div>
+    <div id="list" class="list"></div>
+  </main>
+
+  <!-- editor -->
+  <main id="view-editor" class="view" hidden>
+    <div class="view-head">
+      <button id="btn-back" class="btn btn-ghost">&larr; Listeye dön</button>
+      <div class="row">
+        <button id="btn-preview" class="btn">Önizle</button>
+        <button id="btn-draft" class="btn">Taslak kaydet</button>
+        <button id="btn-publish" class="btn btn-primary">Yayınla</button>
+      </div>
+    </div>
+
+    <div class="editor-grid">
+      <div class="col-form">
+        <label>Kategori
+          <select id="f-cat" class="input"></select>
+          <small class="muted" id="cat-hint"></small>
+        </label>
+
+        <label>Başlık
+          <input id="f-title" class="input" placeholder="İçerik başlığı">
+        </label>
+
+        <label>Slug (adres)
+          <div class="row tight">
+            <input id="f-slug" class="input mono" placeholder="otomatik-olusur">
+            <button id="btn-reslug" class="btn btn-ghost" title="Başlıktan yeniden üret">↻</button>
+          </div>
+          <small class="muted" id="slug-preview"></small>
+        </label>
+
+        <label>Açıklama
+          <textarea id="f-desc" class="input" rows="3"
+            placeholder="Liste kartında ve Google'da görünecek özet"></textarea>
+          <small class="muted"><span id="desc-count">0</span> / 160 karakter
+            <span id="desc-warn" class="warn"></span></small>
+        </label>
+
+        <label>Tarih
+          <input id="f-date" type="date" class="input">
+        </label>
+
+        <fieldset class="cover">
+          <legend>Kapak</legend>
+          <div class="row">
+            <label class="radio"><input type="radio" name="covertype" value="image" checked> Görsel</label>
+            <label class="radio"><input type="radio" name="covertype" value="video"> Video</label>
+            <label class="radio"><input type="radio" name="covertype" value="none"> Yok</label>
+          </div>
+
+          <div id="cover-image">
+            <input id="f-file" type="file" accept="image/*" class="input">
+            <small class="muted">Yüklemeden önce tarayıcıda 1920px / WebP'ye küçültülür.</small>
+            <div id="cover-status" class="status"></div>
+            <img id="cover-thumb" class="thumb" hidden alt="">
+            <input id="f-cover" class="input mono" placeholder="assets/blog/...">
+          </div>
+
+          <div id="cover-video" hidden>
+            <input id="f-video" class="input" placeholder="https://www.youtube.com/watch?v=...">
+            <small class="muted">Önerilen: YouTube veya Vimeo linki.</small>
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="col-body">
+        <label>İçerik (markdown)
+          <div class="md-tools">
+            <button data-md="**" title="Kalın"><b>B</b></button>
+            <button data-md="*" title="Eğik"><i>I</i></button>
+            <button data-md="## " title="Başlık">H2</button>
+            <button data-md="### " title="Alt başlık">H3</button>
+            <button data-md="- " title="Liste">&bull;</button>
+            <button data-md="link" title="Bağlantı">🔗</button>
+          </div>
+          <textarea id="f-body" class="input mono body" rows="22"
+            placeholder="Markdown ile yaz..."></textarea>
+        </label>
+      </div>
+    </div>
+
+    <div id="progress" class="progress" hidden>
+      <div class="bar"><div id="bar-fill"></div></div>
+      <p id="progress-text"></p>
+      <a id="result-link" class="btn btn-primary" hidden target="_blank" rel="noopener">Gönderiyi aç</a>
+    </div>
+  </main>
+
+  <!-- onizleme -->
+  <div id="preview" class="modal" hidden>
+    <div class="modal-head">
+      <strong>Önizleme — gerçek site şablonu</strong>
+      <div class="row">
+        <a id="preview-open" class="btn btn-ghost" target="_blank" rel="noopener">Yeni sekmede</a>
+        <button id="preview-close" class="btn">Kapat</button>
+      </div>
+    </div>
+    <iframe id="preview-frame" title="Önizleme"></iframe>
+  </div>
+
+  <!-- onay -->
+  <div id="confirm" class="modal small" hidden>
+    <div class="confirm-box">
+      <h3 id="confirm-title">Emin misin?</h3>
+      <p id="confirm-text" class="muted"></p>
+      <div class="row end">
+        <button id="confirm-no" class="btn">Vazgeç</button>
+        <button id="confirm-yes" class="btn btn-danger">Sil</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
