@@ -1,0 +1,18 @@
+# core.autocrlf=true olan makinelerde her checkout'ta tum HTML dosyalari
+# "degismis" gorunuyordu. Metin dosyalarini depoda ve diskte LF olarak sabitle.
+* text=auto eol=lf
+
+# Ikili dosyalara dokunma
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+*.mp4 binary
+*.pdf binary
