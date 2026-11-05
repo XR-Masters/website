@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { parseFrontmatter, validatePost } from "./lib/frontmatter.js";
 import { isSafeSlug, assertSafeSlug } from "./lib/slug.js";
 import { renderPost } from "./lib/render.js";
-import { TYPES, getType, loadTypeAssets } from "./lib/content-types.js";
+import { TYPES, getType, loadTypeAssets, underType } from "./lib/content-types.js";
 import { verify, createSession, readSession, destroySession } from "./lib/auth.js";
 
 const ROOT = path.resolve(fileURLToPath(import.meta.url), "..", "..");
@@ -221,7 +221,7 @@ async function api(req, res, url) {
     const build = await runBuild();
     return json(res, 200, {
       ok: build.ok, file: path.basename(target), log: build.log,
-      url: post.draft ? null : `/site/${type.sitePath}/${slug}/`,
+      url: post.draft ? null : `/site/${underType(type, slug)}/`,
     });
   }
 
@@ -258,7 +258,7 @@ async function api(req, res, url) {
       }, loadTypeAssets(type.key));
       previews.set(type.key, html);
       return json(res, 200, {
-        ok: true, href: `/site/${type.sitePath}/__onizleme__/`,
+        ok: true, href: `/site/${underType(type, "__onizleme__")}/`,
       });
     } catch (e) {
       return json(res, 400, { error: e.message });
@@ -327,7 +327,7 @@ const server = http.createServer(async (req, res) => {
 
   // onizleme: gercek derinlikte servis edilir, goreli yollar cozulsun
   for (const t of Object.values(TYPES)) {
-    const p = `/site/${t.sitePath}/__onizleme__/`;
+    const p = `/site/${underType(t, "__onizleme__")}/`;
     if (url.pathname === p || url.pathname === p + "index.html") {
       res.writeHead(200, {
         "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store",

@@ -1,7 +1,7 @@
 {
   "type": "projects",
   "sourceSlug": "castrol-product-visualization",
-  "sourceSha": "d50fba759eaf",
+  "sourceSha": "0b8ae960d471",
   "sourcePostId": "8230",
   "commonOwnCss": "7864",
   "poolSize": 50,
@@ -16,7 +16,7 @@
     },
     {
       "name": "canonical",
-      "chars": 32
+      "chars": 98
     },
     {
       "name": "description",
@@ -32,11 +32,11 @@
     },
     {
       "name": "og:url",
-      "chars": 37
+      "chars": 103
     },
     {
       "name": "og:image blok",
-      "chars": 211
+      "chars": 232
     },
     {
       "name": "published",

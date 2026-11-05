@@ -176,13 +176,16 @@ async function loadList() {
   }
 }
 
-const sitePathOf = (key) =>
-  categories.find((c) => c.key === key)?.sitePath ?? "2-blog-haberler";
+// Haberlerin sitePath'i BOS (sitenin kokunde: /<slug>/), projelerin
+// 'xperiences'. Bos parcayi atmadan birlestirirsek '//slug/' olur.
+const sitePathOf = (key) => categories.find((c) => c.key === key)?.sitePath ?? "";
+const underCat = (key, ...rest) => [sitePathOf(key), ...rest].filter(Boolean).join("/");
 const labelOf = (key) => categories.find((c) => c.key === key)?.label ?? key;
 
-// Kapak yollari tutarsiz: haberlerde '../wp-content/...', projelerde
-// '../../wp-content/...'. Bastaki TUM '../' parcalarini atip site koku altina
-// cevir, yoksa proje kucuk resimleri 404 veriyor.
+// Kapak yolu uc bicimde gelebilir: tam URL (eski WordPress icerikleri
+// og:image'dan mutlak okunuyor), kok-mutlak ('/wp-content/...') veya eski
+// export kalintisi goreli ('../../wp-content/...'). Hepsini /site/ altinda
+// servis edilen yola cevir.
 function mediaUrl(cover) {
   if (!cover) return null;
   if (/^https?:\/\//i.test(cover)) return cover;
@@ -235,7 +238,7 @@ function renderList() {
     view.textContent = "Gör";
     view.target = "_blank";
     view.rel = "noopener";
-    view.href = p.draft ? "#" : `/site/${sitePathOf(p.category)}/${p.slug}/`;
+    view.href = p.draft ? "#" : `/site/${underCat(p.category, p.slug)}/`;
     if (p.draft) view.setAttribute("aria-disabled", "true");
     actions.append(view);
 
@@ -353,7 +356,7 @@ function updateSlugPreview() {
   const s = $("f-slug").value;
   const ok = isSafeSlug(s);
   $("slug-preview").textContent = s
-    ? (ok ? `xr-masters.com/${sitePathOf($("f-cat").value)}/${s}/`
+    ? (ok ? `xr-masters.com/${underCat($("f-cat").value, s)}/`
       : "Geçersiz slug: sadece a-z, 0-9 ve tire")
     : "";
   $("slug-preview").className = ok || !s ? "muted" : "warn";

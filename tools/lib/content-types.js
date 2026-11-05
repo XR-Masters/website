@@ -9,22 +9,34 @@ export const TYPES = {
   news: {
     key: "news",
     label: "Haberler",
-    sitePath: "2-blog-haberler",            // site/ icindeki cikti klasoru
+    // Haberler sitenin KOKUNDE durur: canli URL /<slug>/ seklinde.
+    sitePath: "",
     contentDir: path.join("content", "news"),
     template: "template-news.html",
     seoGraph: "seo-graph-news.json",
     meta: "meta-news.json",
+    // Kok klasorde haberler ve normal sayfalar yan yana. Eski WordPress
+    // iceriklerini ayirt etmek icin body class'i kullaniyoruz: blog postunda
+    // 'single-post' var, sayfada 'page-id-...' var.
+    legacyMarker: "single-post",
   },
   projects: {
     key: "projects",
     label: "Projeler",
-    sitePath: "3-deneyimler",
+    sitePath: "xperiences",
     contentDir: path.join("content", "projects"),
     template: "template-projects.html",
     seoGraph: "seo-graph-projects.json",
     meta: "meta-projects.json",
+    legacyMarker: null,                     // kendi klasorunde, suzmeye gerek yok
   },
 };
+
+// sitePath bos olabilir (haberler kokte). Bos parcalari atarak dubbel
+// slash uretmeyi onler: underType(news, "foo") -> "foo".
+export function underType(type, ...rest) {
+  return [type.sitePath, ...rest].filter(Boolean).join("/");
+}
 
 export function getType(key) {
   const t = TYPES[String(key)];

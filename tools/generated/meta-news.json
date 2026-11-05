@@ -1,7 +1,7 @@
 {
   "type": "news",
   "sourceSlug": "ar-car-app-live-on-stores",
-  "sourceSha": "dc68c27657aa",
+  "sourceSha": "aacb5e7cce42",
   "sourcePostId": "2133",
   "commonOwnCss": null,
   "poolSize": 183,
@@ -16,7 +16,7 @@
     },
     {
       "name": "canonical",
-      "chars": 32
+      "chars": 83
     },
     {
       "name": "description",
@@ -32,11 +32,11 @@
     },
     {
       "name": "og:url",
-      "chars": 37
+      "chars": 88
     },
     {
       "name": "og:image blok",
-      "chars": 200
+      "chars": 224
     },
     {
       "name": "published",
@@ -64,7 +64,7 @@
     },
     {
       "name": "govde",
-      "chars": 762
+      "chars": 757
     },
     {
       "name": "wp-json linki (silindi)",

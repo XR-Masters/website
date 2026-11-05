@@ -121,7 +121,12 @@ for (const p of pages) {
   for (const ref of refs) {
     totalRefs++;
     const clean2 = decodeURIComponent(ref.split("?")[0].split("#")[0]);
-    const abs = path.normalize(path.join(dir, clean2));
+    // Root-absolute ('/wp-content/...') hoort vanaf SITE te resolven, niet
+    // vanaf de pagina. path.join negeert een leidende '/' en zou er anders
+    // 'site/<pagina>/wp-content/...' van maken.
+    const abs = clean2.startsWith("/")
+      ? path.normalize(path.join(SITE, clean2))
+      : path.normalize(path.join(dir, clean2));
     const relFromSite = path.relative(SITE, abs).split(path.sep).join("/");
     if (relFromSite.startsWith("..")) {
       problems.outside.push(`${p} -> ${ref}`);

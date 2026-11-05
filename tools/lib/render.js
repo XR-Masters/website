@@ -3,7 +3,7 @@
 
 import { escapeHtml, renderMarkdown, toPlainText } from "./sanitize.js";
 import { assertSafeSlug } from "./slug.js";
-import { getType } from "./content-types.js";
+import { getType, underType } from "./content-types.js";
 
 export const SITE_URL = "https://www.xr-masters.com";
 export const TITLE_SUFFIX = " • VR Masters, LLC (DBA: XR Masters)";
@@ -11,7 +11,7 @@ export const TITLE_SUFFIX = " • VR Masters, LLC (DBA: XR Masters)";
 export const NEW_ID_BASE = 20000;
 
 export function postUrl(slug, typeKey = "news") {
-  return `${SITE_URL}/${getType(typeKey).sitePath}/${slug}/`;
+  return `${SITE_URL}/${underType(getType(typeKey), slug)}/`;
 }
 
 // Slug'dan tureyen kararli id.
@@ -27,12 +27,16 @@ function isoOf(value) {
   return d.toISOString().replace(/\.\d{3}Z$/, "+00:00");
 }
 
-// Kapak: sayfada goreli yol, og:image icin mutlak URL (sosyal tarayicilar
-// goreli yolu okumaz).
+// Kapak: sayfada kok-mutlak yol ('/wp-content/...'), og:image icin tam URL
+// (sosyal tarayicilar goreli yolu okumaz).
+//
+// Not: eskiden burada '../../' vardi. Haberler artik kokte (derinlik 1),
+// projeler bir klasor altinda (derinlik 2); sabit bir '../' sayisi ikisine
+// birden uymaz. Kok-mutlak yol derinlikten bagimsizdir.
 function coverPaths(cover) {
   if (!cover) return null;
   const clean = String(cover).replace(/^\/+/, "");
-  return { relative: `../../${clean}`, absolute: `${SITE_URL}/${clean}` };
+  return { relative: `/${clean}`, absolute: `${SITE_URL}/${clean}` };
 }
 
 function ogImageMeta(cover, width, height) {
@@ -178,7 +182,7 @@ export function renderPost({ data, body, slug }, { template, seoGraph, meta, typ
       coverHeight: data.coverHeight ?? null,
       video: data.video ?? null,
       format,
-      url: `/${type.sitePath}/${slug}/`,
+      url: `/${underType(type, slug)}/`,
     },
   };
 }

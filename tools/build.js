@@ -1,6 +1,9 @@
-// content/news/*.md     -> site/2-blog-haberler/<slug>/index.html
-// content/projects/*.md  -> site/3-deneyimler/<slug>/index.html
+// content/news/*.md      -> site/<slug>/index.html             (/<slug>/)
+// content/projects/*.md   -> site/xperiences/<slug>/index.html  (/xperiences/<slug>/)
 // + sitemap, robots, birlesik index
+//
+// Yollar canli sitenin URL yapisiyla birebir ayni; klasor adlari TYPES
+// icindeki sitePath'ten gelir.
 //
 // Mevcut WordPress sayfalari yerinde kalir; sadece panelden gelenler uretilir.
 
@@ -80,7 +83,9 @@ function main() {
   for (const type of Object.values(TYPES)) {
     const dir = path.join(SITE, type.sitePath);
     if (!fs.existsSync(dir)) continue;
-    for (const p of buildLegacyIndex(dir)) legacy.push({ ...p, category: type.key });
+    for (const p of buildLegacyIndex(dir, { marker: type.legacyMarker })) {
+      legacy.push({ ...p, category: type.key });
+    }
   }
   const combined = sortByDateDesc([...legacy, ...newEntries]);
   fs.mkdirSync(GEN, { recursive: true });

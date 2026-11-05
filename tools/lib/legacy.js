@@ -4,7 +4,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-export const POSTS_DIR = path.join("site", "2-blog-haberler");
+// Haberler sitenin kokunde (canli URL /<slug>/).
+export const POSTS_DIR = "site";
 
 const SHARED_CSS = new Set(["7", "4534", "4552", "4561", "6865", "10598"]);
 
@@ -57,7 +58,16 @@ export function parseLegacyPost(html, slug) {
   };
 }
 
-export function buildLegacyIndex(dir = POSTS_DIR) {
+// marker: body class'inda bulunmasi gereken isaret. Haberler sitenin kokunde
+// normal sayfalarla yan yana durdugu icin gerekli ('single-post'); kendi
+// klasorunde olan turlerde null gecilir.
+//
+// Varsayilan POSTS_DIR site koku oldugu icin varsayilan marker da
+// 'single-post' olmali: suzme olmadan about-us, privacy-policy gibi normal
+// sayfalar da blog postu sayilirdi.
+export const DEFAULT_MARKER = "single-post";
+
+export function buildLegacyIndex(dir = POSTS_DIR, { marker = DEFAULT_MARKER } = {}) {
   const out = [];
   for (const slug of fs.readdirSync(dir).sort()) {
     const file = path.join(dir, slug, "index.html");
@@ -65,6 +75,10 @@ export function buildLegacyIndex(dir = POSTS_DIR) {
     const html = fs.readFileSync(file, "utf8");
     // Yeni (bizim urettigimiz) postlari atla: onlar content/'ten gelir.
     if (html.includes('class="xrm-schema"')) continue;
+    if (marker) {
+      const bodyClass = /<body class="([^"]*)"/.exec(html);
+      if (!bodyClass || !bodyClass[1].split(/\s+/).includes(marker)) continue;
+    }
     out.push(parseLegacyPost(html, slug));
   }
   return out;

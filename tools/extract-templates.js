@@ -13,7 +13,9 @@ const SHARED_CSS = ["7", "4534", "4552", "4561", "6865", "10598"];
 // --- kategori tanimlari ---
 const TYPES = {
   news: {
-    dir: path.join("site", "2-blog-haberler"),
+    dir: "site",                    // haberler kokte, canli URL /<slug>/
+    // Kokte sayfalar da var; sadece blog postlarindan sablon cikarilir.
+    requireBodyClass: "single-post",
     // WordPress temasi: entry-title / entry-content
     titleRe: /<h1 class="entry-title"[^>]*>[\s\S]*?<\/h1>/,
     titleOut: '<h1 class="entry-title" itemprop="headline">{{ENTRY_TITLE}}</h1>',
@@ -24,7 +26,7 @@ const TYPES = {
     articleOut: '<article id="post-{{POST_ID}}" class="{{ARTICLE_CLASS}}"',
   },
   projects: {
-    dir: path.join("site", "3-deneyimler"),
+    dir: path.join("site", "xperiences"),
     // Elementor: heading-title widget + theme-post-content widget
     titleRe: /<h1 class="elementor-heading-title elementor-size-default">[\s\S]*?<\/h1>/,
     titleOut: '<h1 class="elementor-heading-title elementor-size-default">{{ENTRY_TITLE}}</h1>',
@@ -70,6 +72,10 @@ function pickSource(dir, cfg) {
     if (!fs.existsSync(f)) continue;
     const html = fs.readFileSync(f, "utf8");
     if (html.includes('class="xrm-schema"')) continue;      // bizim urettigimiz
+    if (cfg.requireBodyClass) {
+      const bc = /<body class="([^"]*)"/.exec(html);
+      if (!bc || !bc[1].split(/\s+/).includes(cfg.requireBodyClass)) continue;
+    }
     rows.push({ slug, html, css: ownCss(html).join(","), size: html.length });
   }
   const freq = new Map();

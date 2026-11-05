@@ -1,9 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  renderPost, patchJsonLd, postIdFor, postUrl, NEW_ID_BASE, TITLE_SUFFIX,
+  renderPost, patchJsonLd, postIdFor, postUrl, NEW_ID_BASE, TITLE_SUFFIX, SITE_URL,
 } from "../tools/lib/render.js";
-import { loadTypeAssets, getType, TYPES } from "../tools/lib/content-types.js";
+import { loadTypeAssets, getType, TYPES, underType } from "../tools/lib/content-types.js";
 
 const ASSETS = {
   news: loadTypeAssets("news"),
@@ -51,8 +51,10 @@ for (const key of ["news", "projects"]) {
   test(`[${key}] URL kategorinin klasorunu kullanir`, () => {
     const { entry } = renderPost(post(), assets);
     assert.equal(entry.category, key);
-    assert.equal(entry.url, `/${TYPES[key].sitePath}/ornek-icerik/`);
-    assert.ok(postUrl("x", key).includes(TYPES[key].sitePath));
+    // Haberler kokte (/<slug>/), projeler klasor altinda (/xperiences/<slug>/)
+    assert.equal(entry.url, `/${underType(TYPES[key], "ornek-icerik")}/`);
+    assert.equal(postUrl("x", key), `${SITE_URL}/${underType(TYPES[key], "x")}/`);
+    assert.ok(!entry.url.includes("//"), "cift egik cizgi olmamali");
   });
 
   test(`[${key}] sablonla ayni CSS seti kalir`, () => {
@@ -201,14 +203,16 @@ test("postIdFor: kararli ve eski id'lerle cakismaz", () => {
 });
 
 test("patchJsonLd: WebPage ve ic breadcrumb yamalanir", () => {
+  const url = postUrl("yeni", "news");
   const out = patchJsonLd(ASSETS.news.seoGraph, {
-    url: "https://www.xr-masters.com/2-blog-haberler/yeni/",
+    url,
     title: "Yeni Baslik", description: "acik",
     publishedIso: "2026-03-01T00:00:00+00:00",
     modifiedIso: "2026-03-02T00:00:00+00:00",
   });
   const page = out["@graph"].find((n) => n["@type"] === "WebPage");
-  assert.equal(page["@id"], "https://www.xr-masters.com/2-blog-haberler/yeni/");
+  assert.equal(page["@id"], url);
+  assert.equal(url, `${SITE_URL}/yeni/`, "haber URL'i kokte olmali");
   assert.equal(page.datePublished, "2026-03-01T00:00:00+00:00");
   assert.equal(page.dateModified, "2026-03-02T00:00:00+00:00");
   assert.equal(page.breadcrumb.itemListElement.at(-1).name, "Yeni Baslik");

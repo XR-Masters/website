@@ -2,10 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildSitemap, buildRobots, escapeXml } from "../tools/lib/sitemap.js";
 import { SITE_URL } from "../tools/lib/render.js";
-import { TYPES } from "../tools/lib/content-types.js";
+import { TYPES, underType } from "../tools/lib/content-types.js";
 
-const BLOG_PATH = TYPES.news.sitePath;
-const PROJ_PATH = TYPES.projects.sitePath;
+// Haberlerin sitePath'i bos (kokte dururlar), o yuzden yollari elle
+// birlestirmek yerine underType ile kuruyoruz: bastaki egik cizgi olmaz.
+const blog = (slug) => underType(TYPES.news, slug);
+const proj = (slug) => underType(TYPES.projects, slug);
 
 test("buildSitemap: temel yapi ve XML basligi", () => {
   const xml = buildSitemap([""], {});
@@ -15,13 +17,16 @@ test("buildSitemap: temel yapi ve XML basligi", () => {
 });
 
 test("buildSitemap: anasayfa kok URL olur, digerleri egik cizgiyle biter", () => {
-  const xml = buildSitemap(["", "1-ana-sayfalar/about-us"], {});
+  const xml = buildSitemap(["", "about-us"], {});
   assert.ok(xml.includes(`<loc>${SITE_URL}/</loc>`));
-  assert.ok(xml.includes(`<loc>${SITE_URL}/1-ana-sayfalar/about-us/</loc>`));
+  assert.ok(xml.includes(`<loc>${SITE_URL}/about-us/</loc>`));
 });
 
 test("buildSitemap: anasayfa onceligi 1.0, blog 0.7, diger 0.8", () => {
-  const xml = buildSitemap(["", `${BLOG_PATH}/bir-post`, "1-ana-sayfalar/clients"], {});
+  // 'bir-post' icerik indeksinden taniniyor; 'clients' normal bir sayfa.
+  const xml = buildSitemap(["", blog("bir-post"), "clients"], {
+    posts: [{ slug: "bir-post", category: "news", date: "2026-01-01T00:00:00+00:00" }],
+  });
   const blocks = xml.split("<url>").slice(1);
   const pri = (needle) =>
     /<priority>([\d.]+)<\/priority>/.exec(blocks.find((b) => b.includes(needle)))[1];
@@ -31,7 +36,7 @@ test("buildSitemap: anasayfa onceligi 1.0, blog 0.7, diger 0.8", () => {
 });
 
 test("buildSitemap: post lastmod'u index'ten alir", () => {
-  const xml = buildSitemap([`${BLOG_PATH}/bir-post`], {
+  const xml = buildSitemap([blog("bir-post")], {
     posts: [{ slug: "bir-post", category: "news",
               date: "2026-01-01T00:00:00+00:00",
               modified: "2026-05-20T10:00:00+00:00" }],
@@ -40,14 +45,14 @@ test("buildSitemap: post lastmod'u index'ten alir", () => {
 });
 
 test("buildSitemap: modified yoksa date kullanilir", () => {
-  const xml = buildSitemap([`${BLOG_PATH}/p`], {
+  const xml = buildSitemap([blog("p")], {
     posts: [{ slug: "p", category: "news", date: "2026-02-02T00:00:00+00:00" }],
   });
   assert.ok(xml.includes("<lastmod>2026-02-02</lastmod>"));
 });
 
 test("buildSitemap: proje lastmod'u kendi klasorune yazilir", () => {
-  const xml = buildSitemap([`${PROJ_PATH}/bir-proje`, `${BLOG_PATH}/bir-haber`], {
+  const xml = buildSitemap([proj("bir-proje"), blog("bir-haber")], {
     posts: [
       { slug: "bir-proje", category: "projects", date: "2026-04-04T00:00:00+00:00" },
       { slug: "bir-haber", category: "news", date: "2026-03-03T00:00:00+00:00" },
@@ -60,19 +65,24 @@ test("buildSitemap: proje lastmod'u kendi klasorune yazilir", () => {
 });
 
 test("buildSitemap: her iki kategori de 0.7 oncelik alir", () => {
-  const xml = buildSitemap([`${BLOG_PATH}/a`, `${PROJ_PATH}/b`], {});
+  const xml = buildSitemap([blog("a"), proj("b")], {
+    posts: [
+      { slug: "a", category: "news", date: "2026-01-01T00:00:00+00:00" },
+      { slug: "b", category: "projects", date: "2026-01-01T00:00:00+00:00" },
+    ],
+  });
   assert.equal((xml.match(/<priority>0\.7<\/priority>/g) || []).length, 2);
 });
 
 test("buildSitemap: eslesmeyen sayfada lastmod yazilmaz", () => {
-  const xml = buildSitemap(["1-ana-sayfalar/clients"], {
+  const xml = buildSitemap(["clients"], {
     posts: [{ slug: "baska", date: "2026-01-01T00:00:00+00:00" }],
   });
   assert.ok(!xml.includes("<lastmod>"));
 });
 
 test("buildSitemap: her sayfa icin tam bir <url> blogu", () => {
-  const pages = ["", "a", "b", `${BLOG_PATH}/c`];
+  const pages = ["", "a", "b", proj("c")];
   const xml = buildSitemap(pages, {});
   assert.equal((xml.match(/<url>/g) || []).length, pages.length);
   assert.equal((xml.match(/<loc>/g) || []).length, pages.length);

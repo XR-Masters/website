@@ -3,9 +3,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { SITE_URL } from "./render.js";
-import { TYPES } from "./content-types.js";
+import { TYPES, underType } from "./content-types.js";
 
-const CONTENT_PATHS = Object.values(TYPES).map((t) => t.sitePath);
+// Bos sitePath (haberler kokte) oncelik hesabinda ise yaramaz: her yol ""
+// ile baslar. Sadece gercek klasorleri tut.
+const CONTENT_PATHS = Object.values(TYPES).map((t) => t.sitePath).filter(Boolean);
 
 const SKIP_TOP = new Set(["wp-content", "wp-includes", "_ext", "cdn-cgi"]);
 
@@ -41,16 +43,17 @@ export function buildSitemap(pages, { posts = [], now = new Date() } = {}) {
   const lastmodByPath = new Map();
   for (const p of posts) {
     if (!p.slug) continue;
-    const base = p.category && TYPES[p.category]
-      ? TYPES[p.category].sitePath
-      : CONTENT_PATHS[0];
-    lastmodByPath.set(`${base}/${p.slug}`, p.modified ?? p.date);
+    const type = (p.category && TYPES[p.category]) ? TYPES[p.category] : TYPES.news;
+    lastmodByPath.set(underType(type, p.slug), p.modified ?? p.date);
   }
 
   const urls = pages.map((rel) => {
     const loc = rel === "" ? `${SITE_URL}/` : `${SITE_URL}/${rel}/`;
     const lastmod = lastmodByPath.get(rel) ?? null;
-    const isContent = CONTENT_PATHS.some((c) => rel.startsWith(`${c}/`));
+    // Haberler kokte duruyor, yani yolundan taninamaz. Icerik indeksinde
+    // olup olmadigina bakmak yol tahmininden daha dogru.
+    const isContent = lastmodByPath.has(rel)
+      || CONTENT_PATHS.some((c) => rel.startsWith(`${c}/`));
     const priority = rel === "" ? "1.0" : isContent ? "0.7" : "0.8";
     return { loc, lastmod, priority };
   });
