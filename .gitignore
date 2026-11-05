@@ -3,6 +3,7 @@ node_modules/
 
 # LOKAL kimlik bilgileri - asla repoya girmez
 tools/lib/auth.local.js
+tools/lib/oauth.local.js
 
 # Cloudflare Worker secret'lari
 .dev.vars

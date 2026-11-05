@@ -7,34 +7,28 @@ import { slugify, isSafeSlug } from "/lib/slug.js";
 
 const $ = (id) => document.getElementById(id);
 
-// Token sadece sessionStorage'da; localStorage'a yazilmaz, sekme kapaninca gider.
-const TOKEN_KEY = "xrm_token";
-const getToken = () => sessionStorage.getItem(TOKEN_KEY);
-
-function authHeaders(extra = {}) {
-  const t = getToken();
-  return t ? { ...extra, Authorization: `Bearer ${t}` } : extra;
-}
+// Oturum httpOnly cookie'de: JavaScript ona erisemez, dolayisiyla XSS ile
+// calinamaz. Burada token yonetimi YOK - tarayici cookie'yi kendi gonderir.
+const SAME_ORIGIN = { credentials: "same-origin" };
 
 const api = {
-  async get(p) { return handle(await fetch(p, { headers: authHeaders() })); },
+  async get(p) { return handle(await fetch(p, { ...SAME_ORIGIN })); },
   async post(p, b) {
     return handle(await fetch(p, {
+      ...SAME_ORIGIN,
       method: "POST",
-      headers: authHeaders({ "Content-Type": "application/json" }),
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(b),
     }));
   },
   async del(p) {
-    return handle(await fetch(p, { method: "DELETE", headers: authHeaders() }));
+    return handle(await fetch(p, { ...SAME_ORIGIN, method: "DELETE" }));
   },
 };
 
 async function handle(res) {
   const data = await res.json().catch(() => ({ error: "Yanit okunamadi" }));
   if (res.status === 401) {
-    // oturum bitti: temiz sekilde girise don
-    sessionStorage.removeItem(TOKEN_KEY);
     showLogin("Oturum süresi doldu, tekrar giriş yap.");
     throw new Error(data.error || "Oturum gecersiz");
   }
@@ -68,50 +62,39 @@ function showLogin(message) {
 }
 
 async function boot() {
+  // /api/callback basarisiz olursa ?error=... ile girise doner
+  const err = new URLSearchParams(location.search).get("error");
+  if (err) {
+    $("login-error").textContent = err;
+    $("login-error").hidden = false;
+    history.replaceState(null, "", location.pathname);   // adres cubugunu temizle
+  }
+
+  let cfg;
   try {
-    const cfg = await fetch("/api/config").then((r) => r.json());
+    cfg = await fetch("/api/config", SAME_ORIGIN).then((r) => r.json());
     categories = cfg.categories;
-    $("login-hint").textContent = cfg.mode === "local"
-      ? "Lokal mod: GitHub'a bağlanmaz, content/ klasörüne yazar ve build çalıştırır."
-      : "";
   } catch {
     $("login-hint").textContent =
       "Sunucuya ulaşılamadı. Terminalde: node tools/dev-server.js";
+    $("btn-login").removeAttribute("href");
     return;
   }
 
-  // sekme yenilendiyse gecerli oturumu sürdür
-  if (getToken()) {
-    try {
-      const user = await api.get("/api/user");
-      return enterApp(user);
-    } catch { /* token gecersiz: giris ekrani kalir */ }
+  if (!cfg.authReady) {
+    $("login-hint").textContent =
+      "GitHub OAuth yapılandırılmamış: tools/lib/oauth.local.example.js dosyasını "
+      + "oauth.local.js olarak kopyalayıp doldur.";
+    $("btn-login").removeAttribute("href");
+    return;
   }
+  $("login-hint").textContent =
+    "Lokal mod: content/ klasörüne yazar ve build çalıştırır.";
 
-  $("login-form").onsubmit = async (e) => {
-    e.preventDefault();
-    const btn = $("btn-login");
-    btn.disabled = true;
-    btn.textContent = "Kontrol ediliyor...";
-    try {
-      const r = await fetch("/api/login", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: $("l-email").value, password: $("l-pass").value }),
-      });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || "Giriş başarısız");
-      sessionStorage.setItem(TOKEN_KEY, d.token);
-      $("l-pass").value = "";
-      $("login-error").hidden = true;
-      enterApp(d.user);
-    } catch (err) {
-      $("login-error").textContent = err.message;
-      $("login-error").hidden = false;
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Giriş yap";
-    }
-  };
+  // Cookie hala gecerliyse girisi atla.
+  try {
+    return enterApp(await api.get("/api/user"));
+  } catch { /* oturum yok: giris ekrani kalir */ }
 }
 
 function fillCategorySelects() {
@@ -140,7 +123,7 @@ function fillCategorySelects() {
 function enterApp(user) {
   $("login").hidden = true;
   $("app").hidden = false;
-  const label = user.name || user.email || "?";
+  const label = user.name || user.login || "?";
   $("username").textContent = label;
   $("avatar").textContent = label.charAt(0).toUpperCase();
   $("mode-badge").textContent = "LOKAL MOD";
@@ -151,8 +134,7 @@ function enterApp(user) {
 
 $("btn-logout").onclick = async () => {
   try { await api.post("/api/logout", {}); } catch { /* yoksay */ }
-  sessionStorage.removeItem(TOKEN_KEY);
-  location.reload();
+  location.href = "/";          // cookie sunucuda silindi
 };
 
 function updateCatHint() {

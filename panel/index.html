@@ -15,19 +15,22 @@
 <section id="login" class="login">
   <div class="login-box">
     <h1>XR&nbsp;Masters<span>İçerik Paneli</span></h1>
-    <form id="login-form" autocomplete="on">
-      <label>E-posta
-        <input id="l-email" class="input" type="email" required
-               autocomplete="username" placeholder="ornek@xr-masters.com">
-      </label>
-      <label>Şifre
-        <input id="l-pass" class="input" type="password" required
-               autocomplete="current-password" placeholder="••••••••">
-      </label>
-      <button id="btn-login" class="btn btn-primary btn-lg" type="submit">Giriş yap</button>
-    </form>
+    <a id="btn-login" class="btn btn-primary btn-lg" href="/api/login">
+      <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"
+           fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53
+        5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94
+        -.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82
+        .72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-2.91-.88-2.91-2.84
+        0-.81.29-1.47.76-1.99-.08-.2-.33-1.02.07-2.12 0 0 .62-.2 2.03.76a7.6 7.6 0
+        0 1 2.01-.27c.68 0 1.36.09 2 .27 1.41-.96 2.03-.76 2.03-.76.4 1.1.15 1.92
+        .07 2.12.47.52.76 1.18.76 1.99 0 1.97-1.13 2.64-2.92 2.84.29.26.55.75.55
+        1.52 0 1.09-.01 1.97-.01 2.24 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8
+        c0-4.42-3.58-8-8-8Z"/></svg>
+      GitHub ile giriş yap
+    </a>
     <p class="hint" id="login-hint"></p>
     <p class="hint err-text" id="login-error" hidden></p>
+    <p class="hint muted">Yalnızca yetkili GitHub hesapları girebilir.</p>
   </div>
 </section>
 

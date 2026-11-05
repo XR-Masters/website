@@ -1,8 +1,13 @@
 // Lokal gelistirme sunucusu: panel <-> content/ <-> build.js
 //
 // GitHub API'sinin yerine gecer: gercek markdown yazilir, gercek build calisir.
-// Giris e-posta + sifre ile; sifre hash'i SUNUCUDA kontrol edilir, tarayiciya
-// hic gonderilmez.
+//
+// Giris SADECE GitHub OAuth ile. Kimin girebilecegi tools/lib/github-auth.js
+// icindeki ALLOWED listesinde (numeric user ID'ye gore). client_secret
+// sunucuda kalir, tarayiciya hic gitmez.
+//
+// Oturum httpOnly cookie'de: JavaScript okuyamaz, yani XSS ile calinamaz.
+// SameSite=Strict oldugu icin CSRF'e de kapali.
 //
 //   node tools/dev-server.js   ->  http://127.0.0.1:4000
 
@@ -15,7 +20,10 @@ import { parseFrontmatter, validatePost } from "./lib/frontmatter.js";
 import { isSafeSlug, assertSafeSlug } from "./lib/slug.js";
 import { renderPost } from "./lib/render.js";
 import { TYPES, getType, loadTypeAssets, underType } from "./lib/content-types.js";
-import { verify, createSession, readSession, destroySession } from "./lib/auth.js";
+import {
+  ALLOWED, isAllowed, randomToken, authorizeUrl, exchangeCode, fetchGitHubUser,
+  createSession, readSession, destroySession,
+} from "./lib/github-auth.js";
 
 const ROOT = path.resolve(fileURLToPath(import.meta.url), "..", "..");
 const PORT = 4000;
@@ -37,6 +45,54 @@ const MIME = {
 };
 
 const previews = new Map();                 // type -> html
+const BASE = `http://127.0.0.1:${PORT}`;
+const REDIRECT_URI = `${BASE}/api/callback`;
+const SESSION_COOKIE = "xrm_session";
+const STATE_COOKIE = "xrm_oauth_state";
+
+// OAuth bilgileri: once ortam degiskeni, sonra gitignore'daki lokal dosya.
+// Ikisi de yoksa giris tamamen kapali (fail-closed) - uydurma bir anahtarla
+// yarim calisan bir giris, calismayan bir girisden kotudur.
+let OAUTH = {
+  clientId: process.env.GITHUB_CLIENT_ID || null,
+  clientSecret: process.env.GITHUB_CLIENT_SECRET || null,
+};
+if (!OAUTH.clientId || !OAUTH.clientSecret) {
+  const f = path.join(ROOT, "tools", "lib", "oauth.local.js");
+  if (fs.existsSync(f)) {
+    const m = await import(`file://${f}`);
+    OAUTH = {
+      clientId: m.GITHUB_CLIENT_ID || null,
+      clientSecret: m.GITHUB_CLIENT_SECRET || null,
+    };
+  }
+}
+const AUTH_READY = Boolean(OAUTH.clientId && OAUTH.clientSecret);
+
+function parseCookies(req) {
+  const out = {};
+  for (const part of (req.headers.cookie || "").split(";")) {
+    const i = part.indexOf("=");
+    if (i === -1) continue;
+    out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim());
+  }
+  return out;
+}
+
+// Secure bayragi yok: lokal sunucu http. Uretimde (https) eklenmeli.
+function cookie(name, value, { maxAge, sameSite = "Strict" } = {}) {
+  const bits = [`${name}=${encodeURIComponent(value)}`, "Path=/", "HttpOnly",
+    `SameSite=${sameSite}`];
+  if (maxAge !== undefined) bits.push(`Max-Age=${maxAge}`);
+  return bits.join("; ");
+}
+
+function redirect(res, location, cookies = []) {
+  const headers = { Location: location };
+  if (cookies.length) headers["Set-Cookie"] = cookies;
+  res.writeHead(302, headers);
+  res.end();
+}
 
 function json(res, code, data) {
   const body = JSON.stringify(data);
@@ -109,33 +165,85 @@ function frontmatterOf(post) {
 
 async function api(req, res, url) {
   const seg = url.pathname.split("/").filter(Boolean).slice(1);
-  const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-  const session = readSession(token);
+  const cookies = parseCookies(req);
+  const session = readSession(cookies[SESSION_COOKIE]);
 
   // --- acik uclar ---
   if (req.method === "GET" && seg[0] === "config") {
     return json(res, 200, {
       mode: "local",
+      authReady: AUTH_READY,
       categories: Object.values(TYPES).map((t) => ({
         key: t.key, label: t.label, sitePath: t.sitePath,
       })),
     });
   }
 
-  if (req.method === "POST" && seg[0] === "login") {
-    const { email, password } = await jsonBody(req, 8192);
-    const user = verify(email, password);
-    if (!user) {
-      // ayni mesaj: e-posta mi sifre mi yanlis bilgisi verilmez
-      return json(res, 401, { error: "E-posta veya sifre hatali" });
+  // GET /api/login -> GitHub'a yonlendir
+  if (req.method === "GET" && seg[0] === "login") {
+    if (!AUTH_READY) {
+      return json(res, 503, {
+        error: "GitHub OAuth yapilandirilmamis. tools/lib/oauth.local.example.js "
+          + "dosyasini oauth.local.js olarak kopyalayip doldur.",
+      });
     }
+    const state = randomToken(16);
+    // state cookie'si GitHub'dan DONERKEN okunacak, yani cross-site bir
+    // yonlendirmeden sonra: Strict olursa gonderilmez, Lax olmali.
+    return redirect(res,
+      authorizeUrl({ clientId: OAUTH.clientId, redirectUri: REDIRECT_URI, state }),
+      [cookie(STATE_COOKIE, state, { maxAge: 600, sameSite: "Lax" })]);
+  }
+
+  // GET /api/callback -> code'u takas et, allowlist'i kontrol et
+  if (req.method === "GET" && seg[0] === "callback") {
+    const fail = (msg) =>
+      redirect(res, `/?error=${encodeURIComponent(msg)}`,
+        [cookie(STATE_COOKIE, "", { maxAge: 0, sameSite: "Lax" })]);
+
+    if (url.searchParams.get("error")) {
+      return fail(url.searchParams.get("error_description")
+        || url.searchParams.get("error"));
+    }
+    const code = url.searchParams.get("code");
+    const state = url.searchParams.get("state");
+    if (!code) return fail("GitHub 'code' dondurmedi");
+    // state kontrolu: bu akisi gercekten biz baslattik mi?
+    if (!state || !cookies[STATE_COOKIE] || state !== cookies[STATE_COOKIE]) {
+      return fail("Gecersiz state - giris yeniden denenmeli");
+    }
+
+    let user;
+    try {
+      const token = await exchangeCode({
+        clientId: OAUTH.clientId, clientSecret: OAUTH.clientSecret,
+        code, redirectUri: REDIRECT_URI,
+      });
+      user = await fetchGitHubUser(token);
+    } catch (e) {
+      return fail(e.message);
+    }
+
+    if (!isAllowed(user)) {
+      console.warn(`[auth] REDDEDILDI: ${user.login} (id ${user.id})`);
+      return fail(`Bu GitHub hesabi (${user.login}) yetkili degil.`);
+    }
+
     const s = createSession(user);
-    return json(res, 200, { token: s.token, expiresIn: s.expiresIn, user });
+    console.log(`[auth] giris: ${user.login} (id ${user.id})`);
+    return redirect(res, "/", [
+      cookie(SESSION_COOKIE, s.token, { maxAge: s.expiresIn }),
+      cookie(STATE_COOKIE, "", { maxAge: 0, sameSite: "Lax" }),
+    ]);
   }
 
   if (req.method === "POST" && seg[0] === "logout") {
-    destroySession(token);
-    return json(res, 200, { ok: true });
+    destroySession(cookies[SESSION_COOKIE]);
+    res.writeHead(200, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Set-Cookie": cookie(SESSION_COOKIE, "", { maxAge: 0 }),
+    });
+    return res.end(JSON.stringify({ ok: true }));
   }
 
   // --- buradan sonrasi oturum gerektirir ---
@@ -144,7 +252,10 @@ async function api(req, res, url) {
   }
 
   if (req.method === "GET" && seg[0] === "user") {
-    return json(res, 200, { email: session.email, name: session.name, mode: "local" });
+    return json(res, 200, {
+      login: session.login, name: session.name, avatar: session.avatar,
+      mode: "local",
+    });
   }
 
   // GET /api/posts
@@ -356,7 +467,15 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, "127.0.0.1", () => {
-  console.log(`\n  Panel : http://127.0.0.1:${PORT}/`);
-  console.log(`  Site  : http://127.0.0.1:${PORT}/site/`);
-  console.log(`  Mod   : LOKAL - e-posta + sifre ile giris, GitHub'a baglanmaz\n`);
+  console.log(`\n  Panel : ${BASE}/`);
+  console.log(`  Site  : ${BASE}/site/`);
+  console.log(`  Giris : GitHub OAuth`);
+  if (AUTH_READY) {
+    console.log(`  Yetki : ${ALLOWED.map((u) => u.login).join(", ")}`);
+  } else {
+    console.log(`\n  !! GitHub OAuth yapilandirilmamis - giris KAPALI.`);
+    console.log(`     tools/lib/oauth.local.example.js -> oauth.local.js kopyala,`);
+    console.log(`     callback URL: ${REDIRECT_URI}`);
+  }
+  console.log("");
 });
