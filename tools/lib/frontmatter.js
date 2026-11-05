@@ -17,6 +17,10 @@ function coerce(raw) {
 
 export function parseFrontmatter(text) {
   if (typeof text !== "string") throw new Error("Metin bekleniyor");
+  // Windows editorleri (ve PowerShell'in Set-Content'i) dosya basina BOM
+  // yazar. BOM kalirsa '---' satirbasinda sayilmaz, frontmatter hic
+  // gorulmez ve hata "'title' zorunlu" diye yanlis yerden gelir.
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
   const m = FENCE.exec(text);
   if (!m) return { data: {}, body: text, hasFrontmatter: false };
 

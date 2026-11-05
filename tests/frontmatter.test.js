@@ -12,6 +12,16 @@ test("parseFrontmatter: temel ayristirma", () => {
   assert.equal(body.trim(), "Govde burada.");
 });
 
+test("parseFrontmatter: bastaki BOM frontmatter'i engellemez", () => {
+  // Windows editorleri ve PowerShell'in Set-Content'i BOM yazar. BOM kalirsa
+  // '---' satirbasinda sayilmaz ve hata "'title' zorunlu" diye yanlis
+  // yerden gelir.
+  const { data, hasFrontmatter } = parseFrontmatter(
+    `﻿---\ntitle: Merhaba\ndate: 2026-01-15\n---\nGovde.\n`);
+  assert.equal(hasFrontmatter, true);
+  assert.equal(data.title, "Merhaba");
+});
+
 test("parseFrontmatter: basliktaki iki nokta korunur", () => {
   const { data } = parseFrontmatter(
     `---\ntitle: "XR Masters: yeni donem"\ndate: 2026-01-15\n---\nx`);
