@@ -37,6 +37,17 @@ node tools/dev-server.js      panel + site  ->  http://127.0.0.1:4000
 
 `site/` icinde bir degisiklikten sonra `npm run audit` **"SORUN YOK"** demeli.
 
+## Yayin (GitHub Pages)
+
+Site GitHub Pages'te. `main`'e gelen ve `site/` altini degistiren her push'ta
+`.github/workflows/pages.yml` sadece `site/` klasorunu yayinlar.
+Settings > Pages > Source **"GitHub Actions"** olmali; "Deploy from a branch"
+secilirse repo koku (README) yayinlanir.
+
+Varlik yollari kok-mutlak oldugu icin site sadece bir domainin kokunde dogru
+calisir. `xr-masters.github.io/website/` altinda gorsel ve linkler kirik gorunur;
+test icin bir custom domain baglanmali.
+
 ## Panel girisi (GitHub OAuth)
 
 Giris sadece GitHub ile. Yetkili hesaplar `tools/lib/github-auth.js` icindeki
