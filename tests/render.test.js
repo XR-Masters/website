@@ -162,6 +162,84 @@ for (const key of ["news", "projects"]) {
   });
 }
 
+// --- blok govdeli post (editor: blocks) ---
+test("[news] blok govde gercek sablona gomulur + XSS kacirilir", () => {
+  const body = JSON.stringify([
+    { type: "heading", props: { text: "Merhaba", level: "h2", style: {} } },
+    { type: "text", props: { text: "<script>x</script>govde", style: {} } },
+  ]);
+  const { html, entry } = renderPost({
+    slug: "blok-post",
+    data: { title: "Blok Post", date: "2026-03-01", editor: "blocks", teaser: "kisa ozet" },
+    body,
+  }, ASSETS.news);
+  assert.match(html, /<h2 class="xb-heading"[^>]*>Merhaba<\/h2>/);
+  assert.ok(!html.includes("<script>x"), "blok govde XSS kacirilmali");
+  assert.ok(html.includes(".xb-page"), "blok stilleri gomulmeli");
+  assert.equal(entry.teaser, "kisa ozet");
+  assert.match(html, /<link rel="canonical" href="https:\/\/www\.xr-masters\.com\/blok-post\/">/);
+});
+
+test("[news] gecersiz blok JSON hata verir", () => {
+  assert.throws(() => renderPost(
+    { slug: "x", data: { title: "a", date: "2026-03-01", editor: "blocks" }, body: "{bozuk" },
+    ASSETS.news), /JSON/);
+});
+
+// --- T2 galeri / T3 govde video ---
+test("[T3] govdedeki YouTube linki iframe embed'e cevrilir", () => {
+  for (const body of [
+    "Giris.\n\nhttps://www.youtube.com/watch?v=dQw4w9WgXcQ\n\nDevam.",
+    "Giris.\n\nhttps://youtu.be/dQw4w9WgXcQ\n\nDevam.",
+    "[izle](https://www.youtube.com/watch?v=dQw4w9WgXcQ)",
+  ]) {
+    const { html } = renderPost(post({ body }), ASSETS.news);
+    assert.match(html,
+      /<iframe src="https:\/\/www\.youtube\.com\/embed\/dQw4w9WgXcQ"/, body);
+  }
+});
+
+test("[T3] Vimeo linki player URL'sine cevrilir", () => {
+  const { html } = renderPost(post({
+    body: "x\n\nhttps://vimeo.com/123456789\n\ny",
+  }), ASSETS.news);
+  assert.match(html, /<iframe src="https:\/\/player\.vimeo\.com\/video\/123456789"/);
+});
+
+test("[T3] video olmayan link iframe uretmez, link kalir", () => {
+  const { html } = renderPost(post({
+    body: "x\n\nhttps://example.com/sayfa\n\ny",
+  }), ASSETS.news);
+  // sablonda zaten GTM <iframe>'i var; biz YENI bir oynatici eklememeliyiz
+  assert.ok(!/xrm-video/.test(html), "normal link oynatici olmamali");
+  assert.match(html, /href="https:\/\/example\.com\/sayfa"/);
+});
+
+test("[T3] gecersiz ID (katı regex) iframe uretmez", () => {
+  // 11 karakter degil -> YouTube ID olarak kabul edilmez, enjeksiyon kapali
+  const { html } = renderPost(post({
+    body: "x\n\nhttps://www.youtube.com/watch?v=short\n\ny",
+  }), ASSETS.news);
+  assert.ok(!/youtube\.com\/embed/.test(html), "gecersiz ID embed olmamali");
+});
+
+test("[T2] galeri govdeden sonra img olarak basilir", () => {
+  const { html } = renderPost(post({
+    data: { title: "a", date: "2026-03-01",
+      gallery: "assets/blog/2026/11/a.webp, assets/blog/2026/11/b.webp" },
+  }), ASSETS.news);
+  assert.match(html, /<div class="xrm-gallery">/);
+  assert.match(html, /<img src="\/assets\/blog\/2026\/11\/a\.webp"[^>]*loading="lazy"/);
+  assert.equal((html.match(/xrm-gallery-item/g) || []).length, 2);
+});
+
+test("[T1] sections virgullu stringden entry dizisine cevrilir", () => {
+  const { entry } = renderPost(post({
+    data: { title: "a", date: "2026-03-01", sections: "featured, media" },
+  }), ASSETS.news);
+  assert.deepEqual(entry.sections, ["featured", "media"]);
+});
+
 // --- kategoriye ozel ---
 test("[news] kapak yoksa has-post-thumbnail kalkar", () => {
   const { html } = renderPost(post(), ASSETS.news);

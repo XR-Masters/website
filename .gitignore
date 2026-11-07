@@ -13,8 +13,13 @@ worker/.dev.vars
 
 # yarim kalan indirmeler / gecici
 *.part
-tools/generated/panel-ui.png
+tools/generated/panel-*.png
 tools/generated/*.tmp
+
+# toplanti kayitlari ve dokumleri - repoya girmez (yuzlerce MB)
+video's/
+videos/
+tools/generated/meeting/
 
 # isletim sistemi
 Thumbs.db
