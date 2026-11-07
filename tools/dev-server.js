@@ -153,10 +153,21 @@ function findContent(slug) {
 function frontmatterOf(post) {
   const q = (v) => `"${String(v).replace(/"/g, '\\"')}"`;
   const lines = [`title: ${q(post.title)}`, `date: ${post.date}`];
+  if (post.teaser) lines.push(`teaser: ${q(post.teaser)}`);
   if (post.description) lines.push(`description: ${q(post.description)}`);
+  // Govde bicimi: "blocks" ise govde bloklar JSON'u; yoksa markdown.
+  if (post.editor) lines.push(`editor: ${post.editor}`);
   if (post.cover) lines.push(`cover: ${post.cover}`);
+  // Olculer og:image ve /news/ kartindaki img width/height icin
+  if (post.cover && post.coverWidth) lines.push(`coverWidth: ${post.coverWidth}`);
+  if (post.cover && post.coverHeight) lines.push(`coverHeight: ${post.coverHeight}`);
   if (post.video) lines.push(`video: ${post.video}`);
   if (post.author) lines.push(`author: ${q(post.author)}`);
+  // Coklu deger = virgullu tek string (F16). sections/gallery panelden zaten
+  // virgulle birlestirilmis gelir; logo tek yoldur (cover gibi, tirnaksiz).
+  if (post.sections) lines.push(`sections: ${q(post.sections)}`);
+  if (post.gallery) lines.push(`gallery: ${q(post.gallery)}`);
+  if (post.logo) lines.push(`logo: ${post.logo}`);
   lines.push(`draft: ${post.draft === true}`);
   return `---\n${lines.join("\n")}\n---\n\n${(post.body || "").trim()}\n`;
 }
@@ -275,6 +286,7 @@ async function api(req, res, url) {
         if (data.draft === true) {
           drafts.push({
             slug, category: t.key, title: data.title, date: data.date,
+            teaser: data.teaser ?? "",
             description: data.description ?? "", cover: data.cover ?? null,
             source: "draft", draft: true,
           });
@@ -362,8 +374,10 @@ async function api(req, res, url) {
         slug,
         data: {
           title: post.title || "(baslik yok)", date: post.date || "2026-01-01",
-          description: post.description, cover: post.cover, video: post.video,
-          author: post.author,
+          description: post.description, teaser: post.teaser,
+          cover: post.cover, video: post.video,
+          author: post.author, sections: post.sections, gallery: post.gallery,
+          logo: post.logo, editor: post.editor,
         },
         body: post.body || "(govde yok)",
       }, loadTypeAssets(type.key));

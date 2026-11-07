@@ -15,6 +15,7 @@ import { renderPost } from "./lib/render.js";
 import { TYPES, loadTypeAssets } from "./lib/content-types.js";
 import { buildLegacyIndex, sortByDateDesc } from "./lib/legacy.js";
 import { collectPages, buildSitemap, buildRobots } from "./lib/sitemap.js";
+import { prependCards, countCards } from "./lib/listing.js";
 
 const SITE = "site";
 const GEN = path.join("tools", "generated");
@@ -91,6 +92,21 @@ function main() {
   fs.mkdirSync(GEN, { recursive: true });
   fs.writeFileSync(path.join(GEN, "posts-index.json"),
     JSON.stringify(combined, null, 2), "utf8");
+
+  // Panelden gelen haberleri /news/ gridinin basina ekle. Aksi halde yazi
+  // kendi sayfasini alir ama listede hic gorunmez. Export'tan gelen kartlara
+  // dokunulmaz (bkz. lib/listing.js).
+  const newsPage = path.join(SITE, "news", "index.html");
+  const fresh = newEntries
+    .filter((e) => e.category === "news")
+    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+  if (fresh.length && fs.existsSync(newsPage)) {
+    const before = fs.readFileSync(newsPage, "utf8");
+    const after = prependCards(before, fresh);
+    if (after !== before) fs.writeFileSync(newsPage, after, "utf8");
+    console.log(`news grid  : ${countCards(after)} kart, `
+      + `${fresh.length} yeni basa eklendi`);
+  }
 
   const pages = collectPages(SITE);
   fs.writeFileSync(path.join(SITE, "sitemap.xml"),

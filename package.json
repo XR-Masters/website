@@ -8,6 +8,7 @@
     "build": "node tools/build.js",
     "extract-templates": "node tools/extract-templates.js",
     "audit": "node tools/audit.js",
+    "test-panel": "node tools/test-panel-ui.js",
     "legacy-index": "node tools/legacy-index.js"
   },
   "dependencies": {
