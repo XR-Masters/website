@@ -130,3 +130,16 @@ export function readSession(token) {
 export function destroySession(token) {
   return SESSIONS.delete(String(token || ""));
 }
+
+// Oturumlari disa/ice aktar (dev-server bunlari diske yazarak yeniden
+// baslatmada oturumun silinmesini onler). fs BURADA yok: tasinabilirlik korunur.
+export function dumpSessions() {
+  return [...SESSIONS.entries()];
+}
+export function loadSessions(entries) {
+  if (!Array.isArray(entries)) return;
+  const now = Date.now();
+  for (const [token, s] of entries) {
+    if (s && s.expires > now && ALLOWED_IDS.has(s.id)) SESSIONS.set(token, s);
+  }
+}

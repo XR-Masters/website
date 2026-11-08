@@ -45,9 +45,20 @@ const HEX = /^#[0-9a-fA-F]{3,8}$/;
 const RGB = /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*(?:0|1|0?\.\d+)\s*)?\)$/;
 const NAMED_COLOR = new Set(["black", "white", "red", "green", "blue", "gray", "grey",
   "orange", "yellow", "purple", "navy", "transparent"]);
-const FONTS = new Set(["roboto", "arial", "helvetica", "helvetica neue", "georgia",
-  "times new roman", "times", "courier new", "courier", "verdana", "tahoma",
-  "trebuchet ms", "sans-serif", "serif", "monospace", "ui-monospace"]);
+// Yuklenmeden (cogu sistemde) calisan genis web-safe + yaygin font listesi.
+const FONT_LIST = [
+  "Roboto", "Arial", "Arial Black", "Helvetica", "Verdana", "Tahoma", "Trebuchet MS",
+  "Segoe UI", "Calibri", "Candara", "Gill Sans", "Century Gothic", "Lucida Sans",
+  "Georgia", "Times New Roman", "Garamond", "Palatino Linotype", "Book Antiqua",
+  "Cambria", "Baskerville", "Didot", "Rockwell",
+  "Courier New", "Consolas", "Lucida Console", "Monaco",
+  "Impact", "Comic Sans MS", "Brush Script MT", "Copperplate",
+];
+const FONTS = new Set([
+  ...FONT_LIST.map((f) => f.toLowerCase()),
+  "helvetica neue", "times", "courier", "palatino", "ui-monospace", "system-ui",
+  "sans-serif", "serif", "monospace", "cursive",
+]);
 
 function colorVal(v) {
   const s = v.trim().toLowerCase();
@@ -166,6 +177,5 @@ export function richToText(html) {
     .replace(/\s+/g, " ").trim();
 }
 
-export const FONT_CHOICES = ["Roboto", "Arial", "Georgia", "Times New Roman",
-  "Courier New", "Verdana", "Tahoma", "Trebuchet MS"];
-export const SIZE_CHOICES = [12, 14, 16, 18, 20, 24, 28, 32, 40];
+export const FONT_CHOICES = FONT_LIST;
+export const SIZE_CHOICES = [12, 14, 16, 18, 20, 24, 28, 32, 40, 48, 64];

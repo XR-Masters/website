@@ -4,6 +4,7 @@ node_modules/
 # LOKAL kimlik bilgileri - asla repoya girmez
 tools/lib/auth.local.js
 tools/lib/oauth.local.js
+tools/lib/sessions.local.json
 
 # Cloudflare Worker secret'lari
 .dev.vars
@@ -29,3 +30,6 @@ Desktop.ini
 # editor
 .vscode/
 .idea/
+.obsidian/
+*.canvas
+*.base

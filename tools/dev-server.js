@@ -19,14 +19,16 @@ import { fileURLToPath } from "node:url";
 import { parseFrontmatter, validatePost } from "./lib/frontmatter.js";
 import { isSafeSlug, assertSafeSlug } from "./lib/slug.js";
 import { renderPost } from "./lib/render.js";
+import { removeCard } from "./lib/listing.js";
 import { TYPES, getType, loadTypeAssets, underType } from "./lib/content-types.js";
 import {
   ALLOWED, isAllowed, randomToken, authorizeUrl, exchangeCode, fetchGitHubUser,
-  createSession, readSession, destroySession,
+  createSession, readSession, destroySession, dumpSessions, loadSessions,
 } from "./lib/github-auth.js";
 
 const ROOT = path.resolve(fileURLToPath(import.meta.url), "..", "..");
-const PORT = 4000;
+// Railway (ve diger host'lar) portu PORT env ile verir; lokalde 4000.
+const PORT = Number(process.env.PORT) || 4000;
 const SITE = path.join(ROOT, "site");
 const PANEL = path.join(ROOT, "panel");
 const GEN = path.join(ROOT, "tools", "generated");
@@ -45,7 +47,11 @@ const MIME = {
 };
 
 const previews = new Map();                 // type -> html
-const BASE = `http://127.0.0.1:${PORT}`;
+// Public adres: Railway'de PUBLIC_URL env'i ver (ör. https://xxx.railway.app);
+// lokalde ayarlanmazsa 127.0.0.1. OAuth callback + cookie Secure bunu kullanir.
+const PUBLIC_URL = (process.env.PUBLIC_URL || `http://127.0.0.1:${PORT}`).replace(/\/+$/, "");
+const IS_HTTPS = PUBLIC_URL.startsWith("https://");
+const BASE = PUBLIC_URL;
 const REDIRECT_URI = `${BASE}/api/callback`;
 const SESSION_COOKIE = "xrm_session";
 const STATE_COOKIE = "xrm_oauth_state";
@@ -69,6 +75,17 @@ if (!OAUTH.clientId || !OAUTH.clientSecret) {
 }
 const AUTH_READY = Boolean(OAUTH.clientId && OAUTH.clientSecret);
 
+// Oturumlari diske sakla ki sunucu yeniden baslayinca kullanici cikmasin.
+// sessions.local.json .gitignore'dadir (icinde oturum token'lari var).
+const SESSIONS_FILE = path.join(ROOT, "tools", "lib", "sessions.local.json");
+try {
+  if (fs.existsSync(SESSIONS_FILE)) loadSessions(JSON.parse(fs.readFileSync(SESSIONS_FILE, "utf8")));
+} catch { /* bozuk dosya: yoksay */ }
+function saveSessions() {
+  try { fs.writeFileSync(SESSIONS_FILE, JSON.stringify(dumpSessions()), "utf8"); }
+  catch { /* yazilamadi: yoksay */ }
+}
+
 function parseCookies(req) {
   const out = {};
   for (const part of (req.headers.cookie || "").split(";")) {
@@ -79,10 +96,12 @@ function parseCookies(req) {
   return out;
 }
 
-// Secure bayragi yok: lokal sunucu http. Uretimde (https) eklenmeli.
+// Secure bayragi yalnizca https'te (PUBLIC_URL https ise, orn. Railway). Lokal
+// http'de Secure konursa cookie hic gonderilmez; o yuzden kosullu.
 function cookie(name, value, { maxAge, sameSite = "Strict" } = {}) {
   const bits = [`${name}=${encodeURIComponent(value)}`, "Path=/", "HttpOnly",
     `SameSite=${sameSite}`];
+  if (IS_HTTPS) bits.push("Secure");
   if (maxAge !== undefined) bits.push(`Max-Age=${maxAge}`);
   return bits.join("; ");
 }
@@ -241,6 +260,7 @@ async function api(req, res, url) {
     }
 
     const s = createSession(user);
+    saveSessions();
     console.log(`[auth] giris: ${user.login} (id ${user.id})`);
     return redirect(res, "/", [
       cookie(SESSION_COOKIE, s.token, { maxAge: s.expiresIn }),
@@ -250,6 +270,7 @@ async function api(req, res, url) {
 
   if (req.method === "POST" && seg[0] === "logout") {
     destroySession(cookies[SESSION_COOKIE]);
+    saveSessions();
     res.writeHead(200, {
       "Content-Type": "application/json; charset=utf-8",
       "Set-Cookie": cookie(SESSION_COOKIE, "", { maxAge: 0 }),
@@ -360,6 +381,13 @@ async function api(req, res, url) {
       && fs.readFileSync(pageFile, "utf8").includes('class="xrm-schema"')) {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+    // Silinen haberin /news/ grid kartini da kaldir (yoksa kirik referans kalir).
+    const newsPage = path.join(SITE, "news", "index.html");
+    if (hit.type.key === "news" && fs.existsSync(newsPage)) {
+      const before = fs.readFileSync(newsPage, "utf8");
+      const after = removeCard(before, seg[1]);
+      if (after !== before) fs.writeFileSync(newsPage, after, "utf8");
+    }
     const build = await runBuild();
     return json(res, 200, { ok: build.ok, log: build.log });
   }
@@ -469,6 +497,13 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, f);
   }
 
+  // Canli sitedeki gibi kok-mutlak asset yollari site/ altindan gelir
+  // (blok gorselleri "/assets/blog/..." kullanir; editorde + onizlemede gorunsun).
+  if (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/wp-content/")) {
+    const f = safeJoin(SITE, url.pathname);
+    if (f && fs.existsSync(f)) return serveFile(res, f);
+  }
+
   const rel = url.pathname === "/" ? "/index.html" : url.pathname;
   if (rel.startsWith("/lib/")) {
     const f = safeJoin(path.join(ROOT, "tools", "lib"), rel.slice("/lib".length));
@@ -480,7 +515,10 @@ const server = http.createServer(async (req, res) => {
   serveFile(res, f);
 });
 
-server.listen(PORT, "127.0.0.1", () => {
+// Host: Railway/host'ta (PUBLIC_URL verilince) tum arabirimlere (0.0.0.0) bagla,
+// yoksa lokalde yalniz 127.0.0.1 (LAN'a acilmasin).
+const HOST = process.env.PUBLIC_URL ? "0.0.0.0" : "127.0.0.1";
+server.listen(PORT, HOST, () => {
   console.log(`\n  Panel : ${BASE}/`);
   console.log(`  Site  : ${BASE}/site/`);
   console.log(`  Giris : GitHub OAuth`);

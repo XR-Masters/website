@@ -10,7 +10,7 @@ import {
   renderBlock, pageCss,
 } from "/lib/blocks.js";
 import { slugify, isSafeSlug } from "/lib/slug.js";
-import { sanitizeRich, FONT_CHOICES, SIZE_CHOICES } from "/lib/richtext.js";
+import { sanitizeRich, richToText, FONT_CHOICES, SIZE_CHOICES } from "/lib/richtext.js";
 
 const $ = (id) => document.getElementById(id);
 const SAME = { credentials: "same-origin" };
@@ -33,6 +33,43 @@ let renderTimer;
 let insertAt = null;         // "+" ile secilen ekleme konumu
 let postsData = null;        // blog/haber listesi onizlemesi icin (bir kez cekilir)
 let pendingTemplate = null;  // "Yeni sayfa" sablon seciminden gelen bloklar
+let currentDraftId = null;   // cihazda otomatik arsivleme anahtari (Outlook taslak gibi)
+
+const ARCH = "xb-arch:";
+// Formun o anki tam goruntusu (arsive/geri yuklemeye uygun).
+function snapshotDraft() {
+  return {
+    id: currentDraftId,
+    category: $("bld-cat").value,
+    title: $("bld-title").value,
+    slug: $("bld-slug").value,
+    teaser: $("bld-teaser").value,
+    description: $("bld-desc").value,
+    date: $("bld-date").value,
+    cover: $("bld-cover").value,
+    logo: $("bld-logo").value,
+    sections: [...document.querySelectorAll('input[name="bld-section"]:checked')].map((c) => c.value),
+    blocks: page.blocks,
+    updated: Date.now(),
+  };
+}
+// Arsivden gelen taslagi forma + tuvale uygula.
+function applyDraft(d) {
+  $("bld-cat").value = d.category || $("bld-cat").value;
+  $("bld-title").value = d.title || "";
+  $("bld-slug").value = d.slug || "";
+  $("bld-teaser").value = d.teaser || "";
+  $("bld-desc").value = d.description || "";
+  $("bld-date").value = d.date || new Date().toISOString().slice(0, 10);
+  $("bld-cover").value = d.cover || "";
+  if (d.cover) { $("bld-cover-thumb").src = thumbUrl(d.cover); $("bld-cover-thumb").hidden = false; }
+  $("bld-logo").value = d.logo || "";
+  if (d.logo) { $("bld-logo-thumb").src = thumbUrl(d.logo); $("bld-logo-thumb").hidden = false; }
+  const secs = new Set(d.sections || []);
+  for (const c of document.querySelectorAll('input[name="bld-section"]')) c.checked = secs.has(c.value);
+  page = { slug: d.slug || "", title: d.title || "", blocks: Array.isArray(d.blocks) ? d.blocks : [] };
+}
+function removeDraft(id) { try { localStorage.removeItem(ARCH + id); } catch { /* yoksay */ } }
 
 // renderBlock'a gecirilen baglam (postlist bunu kullanir)
 const bctx = () => (postsData ? { posts: postsData } : null);
@@ -204,7 +241,9 @@ function renderPalette(filter = "") {
       b.ondragstart = (e) => {
         e.dataTransfer.setData("text/xb", "new:" + k);
         e.dataTransfer.effectAllowed = "copy";
+        document.body.classList.add("bld-dragging");
       };
+      b.ondragend = () => document.body.classList.remove("bld-dragging");
       grid.append(b);
     }
     box.append(grid);
@@ -268,8 +307,9 @@ function blockShell(block, arr) {
   w.className = "bld-block" + (block.id === selId ? " sel" : "");
   w.dataset.id = block.id;
   w.draggable = true;
-  // belirlenmis genislik sarmalayiciya da uygulanir (tutamac kenarda kalsin)
+  // belirlenmis boyutlar sarmalayiciya da uygulanir (tutamaclar kenarda kalsin)
   if (block.props.style && block.props.style.width) w.style.width = block.props.style.width + "px";
+  if (block.props.style && block.props.style.height) w.style.height = block.props.style.height + "px";
 
   const inner = document.createElement("div");
   inner.className = "bld-block-inner";
@@ -282,6 +322,12 @@ function blockShell(block, arr) {
       const col = document.createElement("div");
       col.className = "bld-col";
       renderInto(colArr, col);
+      if (!colArr.length) {
+        const hint = document.createElement("div");
+        hint.className = "bld-col-hint";
+        hint.textContent = "Buraya element ekle";
+        col.append(hint);
+      }
       cols.append(col);
     }
     inner.append(cols);
@@ -321,7 +367,20 @@ function blockShell(block, arr) {
       // Word tarzi bicimlendirme: innerHTML'i KATI beyaz listeden gecirip
       // props.html olarak sakla. text/callout blok etiketi (p/liste) de alabilir.
       const inlineOnly = !(block.type === "text" || block.type === "callout");
-      el.onfocus = () => showRtbar(true);
+      el.onfocus = () => {
+        showRtbar(true);
+        // Henuz duzenlenmemis (varsayilan metinli) bloga tiklayinca metni TUMUYLE
+        // sec; boylece yazinca eski metni silmeden dogrudan degisir. Tiklamanin
+        // imlec yerlesimi bittikten sonra uygula (setTimeout 0).
+        if (!block.props.html) setTimeout(() => {
+          if (document.activeElement === el && !block.props.html && el.textContent) {
+            const r = document.createRange();
+            r.selectNodeContents(el);
+            const s = window.getSelection();
+            s.removeAllRanges(); s.addRange(r);
+          }
+        }, 0);
+      };
       el.onblur = () => {
         const html = sanitizeRich(el.innerHTML, { inlineOnly });
         if (html !== (block.props.html || "")) {
@@ -338,6 +397,12 @@ function blockShell(block, arr) {
     e.stopPropagation();
     e.dataTransfer.setData("text/xb", "move:" + block.id);
     e.dataTransfer.effectAllowed = "move";
+    document.body.classList.add("bld-dragging");   // tum birakma noktalari belirginlesir
+    w.classList.add("bld-drag-src");                // suruklenen blok soluklasir
+  };
+  w.ondragend = () => {
+    document.body.classList.remove("bld-dragging");
+    w.classList.remove("bld-drag-src");
   };
   return w;
 }
@@ -354,8 +419,9 @@ function tbBtn(txt, title, fn) {
 // Secili blogu kenardan (genislik), alttan (yukseklik) veya koseden (ikisi)
 // surukleyerek boyutlandir. props.style.width/height'e yazar (styleString basar).
 function addResizeHandles(w, inner, block) {
-  // Genislik SARMALAYICIYA (w) uygulanir ki sag/kose tutamaci ekranda kayan
-  // kenarla birlikte tasinsin; yukseklik ic ogeye uygulanir (icerik yuksekligi).
+  // Pencere gibi: genislik ve yukseklik SARMALAYICIYA (w) uygulanir; tutamaclar
+  // w'nin kenarinda oldugu icin kayan kenarla birlikte hareket eder. Boylece
+  // sag (genislik), alt (yukseklik) ve kose (ikisi) gorsel olarak calisir.
   for (const dir of ["e", "s", "se"]) {
     const h = document.createElement("div");
     h.className = "bld-resize bld-resize-" + dir;
@@ -363,10 +429,8 @@ function addResizeHandles(w, inner, block) {
     h.title = "Sürükleyerek boyutlandır";
     h.onmousedown = (e) => {
       e.preventDefault(); e.stopPropagation();
-      const target = inner.firstElementChild || inner;
-      const sx = e.clientX, sy = e.clientY;
-      const sw = w.getBoundingClientRect().width;
-      const sh = target.getBoundingClientRect().height;
+      const rect = w.getBoundingClientRect();
+      const sx = e.clientX, sy = e.clientY, sw = rect.width, sh = rect.height;
       const maxW = ($("bld-canvas").clientWidth || 1000) - 8;
       let pushed = false;
       const move = (ev) => {
@@ -374,12 +438,12 @@ function addResizeHandles(w, inner, block) {
         if (dir.includes("e")) {
           const nw = Math.max(40, Math.min(maxW, Math.round(sw + (ev.clientX - sx))));
           block.props.style.width = nw;
-          w.style.width = nw + "px";        // sarmalayici -> tutamac kenarda kalir
+          w.style.width = nw + "px";
         }
         if (dir.includes("s")) {
-          const nh = Math.max(20, Math.round(sh + (ev.clientY - sy)));
+          const nh = Math.max(24, Math.round(sh + (ev.clientY - sy)));
           block.props.style.height = nh;
-          target.style.height = nh + "px";
+          w.style.height = nh + "px";
         }
       };
       const up = () => {
@@ -397,7 +461,11 @@ function addResizeHandles(w, inner, block) {
 function select(id) {
   selId = id;
   insertAt = null;
-  renderCanvas();
+  // TAM yeniden render YAPMA: tikladigin contenteditable yok edilirse imlec/odak
+  // kaybolur ve yazamazsin. Sadece secim vurgusunu guncelle.
+  for (const el of document.querySelectorAll(".bld-block")) {
+    el.classList.toggle("sel", el.dataset.id === id);
+  }
   renderSettings();
   showDocTab("el");
   updateRtbar();
@@ -728,10 +796,22 @@ function updateSlugPrev() {
 }
 
 // Form -> post nesnesi (govde = bloklar JSON, editor: blocks).
+// Baslik alani bossa ilk baslik (yoksa ilk metin) blogundan turet.
+function firstBlockText() {
+  const pick = page.blocks.find((b) => b.type === "heading" && (b.props.html || b.props.text))
+    || page.blocks.find((b) => b.props && (b.props.html || b.props.text));
+  if (!pick) return "";
+  return (pick.props.html ? richToText(pick.props.html) : String(pick.props.text || "")).trim();
+}
+
 function collectPost(draft) {
-  const title = $("bld-title").value.trim();
+  let title = $("bld-title").value.trim();
+  if (!title) {
+    title = firstBlockText().slice(0, 120).trim();
+    if (title) $("bld-title").value = title;   // turetileni forma yansit
+  }
   const slug = postSlug();
-  if (!title) throw new Error("Başlık boş olamaz");
+  if (!title) throw new Error("Başlık boş — başlık alanına yaz veya bir Başlık bloğu ekle");
   if (!isSafeSlug(slug)) throw new Error("Geçersiz slug (a-z, 0-9, tire)");
   if (!page.blocks.length) throw new Error("İçerik boş — en az bir blok ekle");
   const sections = [...document.querySelectorAll('input[name="bld-section"]:checked')].map((c) => c.value);
@@ -758,12 +838,16 @@ async function save(draft) {
   try { post = collectPost(draft); } catch (e) { toast(e.message, "err"); return; }
   try {
     const r = await postJSON("/api/posts", post);
-    dirty = false;
-    localStorage.removeItem("xb-draft:new");
-    page.slug = post.slug;
     if (!r.ok) { toast("Build hatası:\n" + (r.log || "").slice(-300), "err"); return; }
-    if (draft) { toast("Taslak kaydedildi", "ok"); }
-    else { toast("Yayınlandı", "ok"); if (r.url) window.open(r.url, "_blank", "noopener"); }
+    dirty = false;
+    page.slug = post.slug;
+    if (draft) {
+      toast("Taslak kaydedildi", "ok");
+    } else {
+      removeDraft(currentDraftId);   // yayinlandi -> cihazdaki arsiv taslagi silinir
+      toast("Yayınlandı", "ok");
+      if (r.url) window.open(r.url, "_blank", "noopener");
+    }
   } catch (e) { toast(e.message, "err"); }
 }
 
@@ -811,7 +895,10 @@ function markDirty() {
   dirty = true;
   clearTimeout(markDirty._t);
   markDirty._t = setTimeout(() => {
-    try { localStorage.setItem("xb-draft:" + (page.slug || "new"), JSON.stringify(page)); }
+    // her degisiklikte cihaza otomatik kaydet (bos icerigi arsivleme)
+    if (!currentDraftId) return;
+    if (!$("bld-title").value.trim() && !page.blocks.length) return;
+    try { localStorage.setItem(ARCH + currentDraftId, JSON.stringify(snapshotDraft())); }
     catch { /* kota dolu olabilir: yoksay */ }
   }, 800);
 }
@@ -838,7 +925,11 @@ $("bld-redo").onclick = redo;
 $("bld-title").oninput = () => { updateSlugPrev(); markDirty(); };
 $("bld-slug").oninput = () => { updateSlugPrev(); markDirty(); };
 $("bld-search").oninput = () => renderPalette($("bld-search").value);
-$("bld-canvas").onclick = () => { selId = null; renderCanvas(); renderSettings(); showDocTab("doc"); updateRtbar(); };
+$("bld-canvas").onclick = () => {
+  selId = null;
+  for (const el of document.querySelectorAll(".bld-block.sel")) el.classList.remove("sel");
+  renderSettings(); showDocTab("doc"); updateRtbar();
+};
 
 // ---------- Word tarzi zengin metin araç çubuğu ----------
 // font/boyut listelerini doldur
@@ -854,7 +945,9 @@ $("bld-canvas").onclick = () => { selId = null; renderCanvas(); renderSettings()
 let savedRange = null;
 document.addEventListener("selectionchange", () => {
   const sel = window.getSelection();
-  if (!sel || !sel.rangeCount) return;
+  // Daralmis (bos) secimi KAYDETME: font/boyut menusune tiklayinca secim collapse
+  // olur; son GERCEK (genis) secimi tutmaliyiz ki stil ona uygulanabilsin.
+  if (!sel || !sel.rangeCount || sel.isCollapsed) return;
   let n = sel.getRangeAt(0).commonAncestorContainer;
   n = n.nodeType === 1 ? n : n.parentElement;
   if (n && n.closest && n.closest(".bld-editable")) savedRange = sel.getRangeAt(0).cloneRange();
@@ -889,18 +982,31 @@ function commitRich() {
   delete b.props.text;
   markDirty();
 }
+// Secili yazinin boyutunu kademe kademe buyut/kucult (A+ / A-).
+function bumpSize(delta) {
+  restoreRange();
+  const sel = window.getSelection();
+  if (!sel.rangeCount || sel.isCollapsed) return;
+  let node = sel.getRangeAt(0).startContainer;
+  node = node.nodeType === 1 ? node : node.parentElement;
+  const cur = parseInt(getComputedStyle(node).fontSize, 10) || 16;
+  const next = Math.max(10, Math.min(120, cur + delta));
+  wrapStyle({ fontSize: next + "px" });   // wrapStyle commitRich cagirir
+}
 function updateRtbar() {
   const b = getSel();
   $("bld-rtbar").hidden = !(b && TYPES[b.type] && TYPES[b.type].inlineEdit);
 }
 function showRtbar(on) { if (on) $("bld-rtbar").hidden = false; }
 
-// B/I/U/S/link/clear: mousedown preventDefault -> editable odagi/secimi korunur
+// B/I/U/S/boyut/link/clear: mousedown preventDefault -> editable odagi/secimi korunur
 for (const btn of document.querySelectorAll("#bld-rtbar [data-rt]")) {
   btn.onmousedown = (e) => e.preventDefault();
   btn.onclick = () => {
     const cmd = btn.dataset.rt;
     restoreRange();
+    if (cmd === "sizeup") return bumpSize(2);
+    if (cmd === "sizedown") return bumpSize(-2);
     if (cmd === "link") {
       const u = $("bld-rt-link").value.trim();
       if (u) document.execCommand("createLink", false, u);
@@ -944,22 +1050,92 @@ function clearDoc() {
   $("bld-date").value = new Date().toISOString().slice(0, 10);
 }
 
+async function ensurePosts() {
+  if (postsData !== null) return;
+  try {
+    const d = await getJSON("/api/posts");
+    postsData = (d.posts || []).map((x) => ({
+      category: x.category, title: x.title, slug: x.slug, url: x.url,
+      cover: x.cover ? thumbUrl(x.cover) : null,
+    }));
+  } catch { /* oturum yok: postlist yer tutucu gosterir */ }
+}
+function finishOpen() {
+  updateSlugPrev();
+  showDocTab("doc");
+  renderPalette();
+  renderCanvas();
+  renderSettings();
+  updateUndo();
+}
+
+// ---------- arsiv listesi (cihazdaki bitmemis taslaklar) ----------
+function renderArchive() {
+  const box = $("arch-list");
+  box.textContent = "";
+  const items = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith(ARCH)) {
+      try { const d = JSON.parse(localStorage.getItem(k)); if (d) items.push(d); } catch { /* yoksay */ }
+    }
+  }
+  items.sort((a, b) => (b.updated || 0) - (a.updated || 0));
+  $("arch-count").textContent = `(${items.length})`;
+  if (!items.length) {
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = "Arşiv boş. Yeni içerik başladığında burada otomatik saklanır.";
+    box.append(p);
+    return;
+  }
+  for (const d of items) box.append(archRow(d));
+}
+function archRow(d) {
+  const row = document.createElement("div");
+  row.className = "item";
+  const thumb = document.createElement("div");
+  thumb.className = "item-thumb";
+  if (d.cover) thumb.style.backgroundImage = `url("${thumbUrl(d.cover).replace(/"/g, "")}")`;
+  const mid = document.createElement("div");
+  const h = document.createElement("h3");
+  h.textContent = d.title || "(başlıksız taslak)";
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  const cat = document.createElement("span"); cat.className = "tag tag-cat"; cat.textContent = d.category || "news";
+  const when = document.createElement("span");
+  when.textContent = d.updated ? new Date(d.updated).toLocaleString("tr-TR") : "";
+  const nb = document.createElement("span");
+  nb.textContent = (Array.isArray(d.blocks) ? d.blocks.length : 0) + " blok";
+  meta.append(cat, when, nb);
+  mid.append(h, meta);
+  const actions = document.createElement("div");
+  actions.className = "actions row";
+  const open = document.createElement("button");
+  open.className = "btn"; open.textContent = "Aç";
+  open.onclick = () => window.XPanel.showBuilderArchive(d.id);
+  const del = document.createElement("button");
+  del.className = "btn btn-ghost"; del.textContent = "Sil";
+  let armed = false;
+  del.onclick = () => {
+    if (!armed) { armed = true; del.textContent = "Onayla?"; del.classList.add("btn-danger"); return; }
+    removeDraft(d.id); renderArchive();
+  };
+  actions.append(open, del);
+  row.append(thumb, mid, actions);
+  return row;
+}
+$("btn-arch-new").onclick = () => window.XPanel.showBuilder();
+
 window.XBuilder = {
+  renderArchive,
   async open(slug) {
     await fillCats();
-    // postlist onizlemesi icin yazilari bir kez cek
-    if (postsData === null) {
-      try {
-        const d = await getJSON("/api/posts");
-        postsData = (d.posts || []).map((x) => ({
-          category: x.category, title: x.title, slug: x.slug, url: x.url,
-          cover: x.cover ? thumbUrl(x.cover) : null,
-        }));
-      } catch { /* oturum yok: postlist yer tutucu gosterir */ }
-    }
+    await ensurePosts();
     resetEditor();
     clearDoc();
     page = { slug: "", title: "", blocks: [] };
+    currentDraftId = slug ? "post-" + slug : "new-" + Date.now().toString(36);
     if (slug) {
       try {
         const d = await getJSON("/api/posts/" + slug);
@@ -980,18 +1156,27 @@ window.XBuilder = {
           try { page = { slug, title: data.title || "", blocks: JSON.parse(d.body) }; }
           catch { page = { slug, title: data.title || "", blocks: [] }; }
         } else {
-          // eski markdown gonderi: tek metin bloguna sar (blok editorle acilsin)
           page = { slug, title: data.title || "", blocks: [{ id: uid(), type: "text", props: { ...defaultProps("text"), text: d.body || "" } }] };
           toast("Markdown gönderi blok olarak açıldı", "err");
         }
       } catch (e) { toast(e.message, "err"); }
     }
-    updateSlugPrev();
-    showDocTab("doc");
-    renderPalette();
-    renderCanvas();
-    renderSettings();
-    updateUndo();
+    finishOpen();
+  },
+  async openArchive(id) {
+    await fillCats();
+    await ensurePosts();
+    resetEditor();
+    clearDoc();
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(ARCH + id)); } catch { /* bozuk */ }
+    if (d) { applyDraft(d); currentDraftId = id; }
+    else {
+      page = { slug: "", title: "", blocks: [] };
+      currentDraftId = "new-" + Date.now().toString(36);
+      toast("Taslak bulunamadı", "err");
+    }
+    finishOpen();
   },
 };
 

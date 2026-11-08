@@ -106,3 +106,20 @@ export function prependCards(html, posts, { limit = GRID_SIZE } = {}) {
 export function countCards(html) {
   return (html.match(/<article class="eael-grid-post/g) || []).length;
 }
+
+// Verilen slug'in kartini gridden cikarir (silinen gonderi icin). Diger kartlara
+// (WordPress export dahil) DOKUNMAZ. prependCards ile ayni ayristirma mantigi.
+export function removeCard(html, slug) {
+  const open = GRID_OPEN.exec(html);
+  if (!open) return html;
+  const start = open.index + open[0].length;
+  const END = "</article>";
+  const lastEnd = html.lastIndexOf(END);
+  if (lastEnd < start) return html;
+  const inner = html.slice(start, lastEnd + END.length);
+  const kept = (inner.match(ARTICLE) || []).filter((a) => {
+    const href = /class="eael-grid-post-link" href="\/([^"]*?)\/"/.exec(a);
+    return !href || href[1].split("/").pop() !== slug;
+  });
+  return html.slice(0, start) + kept.join("") + html.slice(lastEnd + END.length);
+}

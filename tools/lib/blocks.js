@@ -41,6 +41,13 @@ function rootSrc(s) {
   return "/" + v.replace(/^(?:\.\.\/)+/, "").replace(/^\/+/, "");
 }
 
+// Gorsel src: once sema dogrula (javascript: vb. at), sonra kok-mutlak yap.
+// "assets/blog/x.webp" -> "/assets/blog/x.webp" (hem editorde hem canli sitede calisir).
+function imgSrc(s) {
+  const u = safeUrl(s);
+  return u ? rootSrc(u) : null;
+}
+
 // ---------- kucuk, guvenli satir-ici bicimlendirme ----------
 // Once TUM metin escape edilir (etiket enjeksiyonu imkansiz), sonra yalnizca
 // **kalin**, *egik*, [metin](url) ve satir sonu bizim etiketlerimize cevrilir.
@@ -135,7 +142,6 @@ export const CATEGORIES = [
   { key: "text", label: "Metin" },
   { key: "media", label: "Medya" },
   { key: "interactive", label: "Etkileşim" },
-  { key: "content", label: "İçerik" },
 ];
 
 export const TYPES = {
@@ -222,14 +228,6 @@ export const TYPES = {
     label: "Kolonlar", cat: "layout", icon: "▦",
     fields: [{ k: "cols", type: "select", label: "Kolon sayısı", opts: ["2", "3"], def: "2" }],
   },
-  postlist: {
-    label: "Blog / Haber listesi", cat: "content", icon: "☰",
-    fields: [
-      { k: "source", type: "select", label: "Kaynak", opts: ["news", "projects", "all"], def: "news" },
-      { k: "count", type: "number", label: "Kaç yazı", def: 3 },
-      { k: "columns", type: "select", label: "Sütun", opts: ["1", "2", "3"], def: "3" },
-    ],
-  },
   divider: { label: "Ayırıcı", cat: "layout", icon: "―", fields: [] },
   spacer: {
     label: "Boşluk", cat: "layout", icon: "↕",
@@ -310,7 +308,7 @@ export function renderBlock(block, ctx) {
       return `<div class="xb-button-wrap${vis}"${sa}><a class="xb-button"${href}${ext}>${rich(p, true)}</a></div>`;
     }
     case "image": {
-      const src = safeUrl(p.src);
+      const src = imgSrc(p.src);
       if (!src) return `<div class="xb-image xb-empty${vis}"${sa}>Görsel seçin</div>`;
       const cap = p.caption ? `<figcaption class="xb-caption">${esc(p.caption)}</figcaption>` : "";
       let img = `<img class="xb-img" src="${esc(src)}" alt="${esc(p.alt)}" loading="lazy">`;
@@ -332,21 +330,21 @@ export function renderBlock(block, ctx) {
         + `allow="autoplay; encrypted-media; picture-in-picture"></iframe></div>${cap}</figure>`;
     }
     case "gallery": {
-      const imgs = (Array.isArray(p.images) ? p.images : []).filter((im) => safeUrl(im && im.src));
+      const imgs = (Array.isArray(p.images) ? p.images : []).filter((im) => imgSrc(im && im.src));
       if (!imgs.length) return `<div class="xb-empty${vis}"${sa}>Galeri için görsel ekleyin</div>`;
       const n = ["2", "3", "4"].includes(p.cols) ? p.cols : "3";
       const cells = imgs.map((im) => {
         const cap = im.caption ? `<figcaption class="xb-caption">${esc(im.caption)}</figcaption>` : "";
-        return `<figure class="xb-g-item"><img src="${esc(safeUrl(im.src))}" alt="${esc(im.alt)}" loading="lazy">${cap}</figure>`;
+        return `<figure class="xb-g-item"><img src="${esc(imgSrc(im.src))}" alt="${esc(im.alt)}" loading="lazy">${cap}</figure>`;
       }).join("");
       return `<div class="xb-gallery xb-gallery-${n}${vis}"${sa}>${cells}</div>`;
     }
     case "slider": {
-      const sl = (Array.isArray(p.slides) ? p.slides : []).filter((s) => safeUrl(s && s.src));
+      const sl = (Array.isArray(p.slides) ? p.slides : []).filter((s) => imgSrc(s && s.src));
       if (!sl.length) return `<div class="xb-empty${vis}"${sa}>Slayt için görsel ekleyin</div>`;
       const slides = sl.map((s) => {
         const cap = s.caption ? `<div class="xb-slide-cap">${esc(s.caption)}</div>` : "";
-        return `<div class="xb-slide"><img src="${esc(safeUrl(s.src))}" alt="${esc(s.alt)}" loading="lazy">${cap}</div>`;
+        return `<div class="xb-slide"><img src="${esc(imgSrc(s.src))}" alt="${esc(s.alt)}" loading="lazy">${cap}</div>`;
       }).join("");
       const dots = p.dots ? `<div class="xb-dots">${sl.map(() => '<span class="xb-dot"></span>').join("")}</div>` : "";
       return `<div class="xb-slider${vis}"${sa} data-autoplay="${p.autoplay ? 1 : 0}">`
@@ -404,7 +402,9 @@ export function renderBlocks(blocks, ctx) {
 export function pageCss() {
   return `
 .xb-page{font-family:Roboto,"Helvetica Neue",Arial,sans-serif;color:#2b2f31;line-height:1.7;font-size:17px;}
-.xb-page>*{margin:0 0 20px;}
+.xb-page>*{margin:0 0 20px;border:1.5px solid #1a1a1a;padding:14px 16px;}
+.xb-page>.xb-cols{border:0;padding:0;}
+.xb-col>*{border:1.5px solid #1a1a1a;padding:14px 16px;}
 .xb-page>*:first-child{margin-top:0;}
 .xb-page a:not(.xb-button):not(.xb-post){color:#0068A3;text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px;}
 .xb-page a:not(.xb-button):not(.xb-post):hover{color:#004165;}
@@ -460,7 +460,8 @@ h4.xb-heading{font-size:17px;letter-spacing:0;}
 .xb-post img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;}
 .xb-post-t{display:block;padding:10px 12px;font-weight:600;font-size:15px;color:#004165;}
 @media(max-width:860px){.xb-postlist-2,.xb-postlist-3{grid-template-columns:1fr;}}
-.xb-divider{border:0;border-top:1px solid #e3e8eb;}
+.xb-divider{border:0;border-top:1.5px solid #1a1a1a;padding:0;}
+.xb-spacer{padding:0 !important;}
 .xb-empty{border:1px dashed #b9c6ce;border-radius:8px;padding:18px;text-align:center;color:#7A7A7A;background:#f6f9fb;}
 @media(max-width:860px){h1.xb-heading{font-size:30px;}h2.xb-heading{font-size:24px;}}
 .xb-hide-desktop{display:none;}

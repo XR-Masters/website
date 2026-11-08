@@ -48,8 +48,9 @@ h1, h2, h3 { font-weight: 600; margin: 0; }
   box-shadow: 0 10px 40px rgba(0, 0, 0, .2); text-align: center;
   max-width: 400px; width: 100%;
 }
-.login-box h1 { font-size: 24px; color: var(--navy); margin-bottom: 6px; }
-.login-box h1 span { display: block; font-size: 14px; color: var(--muted); font-weight: 400; }
+.login-logo { display: block; margin: 0 auto 18px; height: 84px; width: auto; }
+.login-box h1 { font-size: 23px; color: var(--navy); margin-bottom: 4px; letter-spacing: -.01em; }
+.login-box h1 span { display: block; font-size: 13px; color: var(--muted); font-weight: 400; margin-top: 4px; letter-spacing: 0; }
 .login-box .btn { margin-top: 22px; width: 100%; }
 /* GitHub butonu: ikon + metin ortada. <a> oldugu icin text-decoration gider.
    display veriyoruz ama [hidden] yukarida !important ile korunuyor. */
@@ -68,7 +69,9 @@ h1, h2, h3 { font-weight: 600; margin: 0; }
   background: var(--navy); color: #fff; padding: 0 16px; height: 56px;
   position: sticky; top: 0; z-index: 30;
 }
-.brand { font-weight: 600; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.brand-logo { height: 34px; width: auto; background: #fff; border-radius: 7px; padding: 3px 6px; display: block; }
+.brand-sub { font-weight: 600; font-size: 14px; opacity: .92; letter-spacing: .01em; }
 .brand span { opacity: .65; font-weight: 400; font-size: 13px; }
 .spacer { flex: 1; }
 .wp-site-link { color: #cfe6f4; text-decoration: none; font-size: 13px; }
@@ -93,7 +96,9 @@ h1, h2, h3 { font-weight: 600; margin: 0; }
 }
 .wp-nav-item:hover { background: #2c3e4c; color: #fff; }
 .wp-nav-item.active { background: var(--deep); color: #fff; border-left-color: var(--primary); }
-.wp-nav-ic { width: 20px; text-align: center; }
+.wp-nav-ic { width: 19px; height: 19px; flex: none; opacity: .92; }
+.wp-nav-item.active .wp-nav-ic { opacity: 1; }
+.bld-rt-az { font-weight: 700; min-width: 30px; }
 .wp-nav-sep { height: 1px; background: rgba(255, 255, 255, .08); margin: 8px 14px; }
 .wp-nav-cta { color: #fff; font-weight: 600; }
 .wp-content { flex: 1; min-width: 0; }
@@ -362,11 +367,21 @@ fieldset.cover legend { font-size: 13px; font-weight: 600; padding: 0 6px; color
 }
 .bld-drop:hover .bld-drop-plus, .bld-drop.active .bld-drop-plus { opacity: 1; }
 .bld-drop.active { height: 22px; }
-.bld-drop.over { height: 30px; background: #d7ecf7; border-radius: 6px; }
+/* surukleme sirasinda: her birakma noktasi ince cizgi; hedef kalin mavi olur */
+.bld-dragging .bld-drop { height: 16px; }
+.bld-dragging .bld-drop-plus { opacity: 0; }
+.bld-dragging .bld-drop::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  height: 2px; background: #cfe0ea; border-radius: 2px; transition: height .1s, background .1s;
+}
+.bld-drop.over { height: 22px; background: transparent; }
+.bld-dragging .bld-drop.over::after { height: 5px; background: var(--deep); box-shadow: 0 0 0 3px rgba(0, 104, 163, .15); }
+.bld-drag-src { opacity: .35; }
 
-.bld-block { position: relative; border: 1px solid transparent; border-radius: 6px; padding: 4px; cursor: pointer; }
-.bld-block:hover { border-color: #bfe0f1; }
-.bld-block.sel { border-color: var(--deep); box-shadow: 0 0 0 2px rgba(0, 104, 163, .15); }
+/* her blok her zaman SIYAH kenarlikla cikar (editorde = yayinda, WYSIWYG) */
+.bld-block { position: relative; border: 1.5px solid #1a1a1a; border-radius: 3px; padding: 8px; margin: 8px 0; cursor: pointer; background: #fff; }
+.bld-block:hover { box-shadow: 0 0 0 2px #9fcfe8; }
+.bld-block.sel { box-shadow: 0 0 0 2px var(--deep); }
 .bld-block-inner { pointer-events: auto; }
 .bld-block-lb {
   position: absolute; top: -9px; left: 8px; font-size: 10px; font-weight: 600;
@@ -397,9 +412,10 @@ fieldset.cover legend { font-size: 13px; font-weight: 600; padding: 0 6px; color
 /* kolonlar (editor icinde): her kolon kendi drop alani */
 .bld-cols { display: flex; gap: 10px; }
 .bld-col {
-  flex: 1; min-width: 0; min-height: 54px; padding: 6px;
-  border: 1px dashed #cdd9e1; border-radius: 6px; background: #fafcfe;
+  flex: 1; min-width: 0; min-height: 64px; padding: 8px;
+  border: 1px dashed #b9cdd9; border-radius: 6px; background: #f4f9fc;
 }
+.bld-col-hint { text-align: center; color: #9bb3c2; font-size: 12px; padding: 10px 4px; pointer-events: none; }
 
 /* --- sag ayar paneli --- */
 .bld-settings {

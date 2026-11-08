@@ -284,6 +284,7 @@ for (const b of document.querySelectorAll(".wp-nav-item")) {
     const nav = b.dataset.nav;
     document.body.classList.remove("nav-open");    // dar ekranda menuyu kapat
     if (nav === "new") { setActiveNav("new"); window.XPanel.showBuilder(); return; }
+    if (nav === "archive") { window.XPanel.showArchive(); return; }
     $("filter-cat").value = nav;
     setActiveNav(nav);
     showView("list");
@@ -295,6 +296,8 @@ for (const b of document.querySelectorAll(".wp-nav-item")) {
 window.XPanel = {
   showList() { setActiveNav(""); showView("list"); },
   showBuilder(slug) { setActiveNav("new"); showView("builder"); window.XBuilder?.open(slug); },
+  showBuilderArchive(id) { setActiveNav("new"); showView("builder"); window.XBuilder?.openArchive(id); },
+  showArchive() { setActiveNav("archive"); showView("archive"); window.XBuilder?.renderArchive(); },
   toast,
 };
 
@@ -308,6 +311,7 @@ function showView(which) {
   $("view-list").hidden = which !== "list";
   $("view-editor").hidden = which !== "editor";
   $("view-builder").hidden = which !== "builder";
+  $("view-archive").hidden = which !== "archive";
   if (which === "list") loadList();
 }
 

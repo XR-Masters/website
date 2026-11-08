@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  renderCard, prependCards, countCards, humanDate, GRID_SIZE,
+  renderCard, prependCards, countCards, humanDate, GRID_SIZE, removeCard,
 } from "../tools/lib/listing.js";
 
 // Gercek sayfanin iskeleti: grid kabi + iki "export" karti.
@@ -106,6 +106,20 @@ test("prependCards: grid disindaki HTML'e dokunmaz", () => {
   const out = prependCards(page(legacy("e", "E")), [post()]);
   assert.ok(out.startsWith("<head></head>"));
   assert.ok(out.endsWith("</div></div>"));
+});
+
+test("removeCard: silinen slug'in karti cikar, digerleri (export) kalir", () => {
+  const a = legacy("kalan-haber", "Kalan Haber");
+  const b = legacy("silinen-haber", "Silinen Haber");
+  const out = removeCard(page(a, b), "silinen-haber");
+  assert.equal(countCards(out), 1);
+  assert.ok(out.includes(a), "diger kart birebir kalmali");
+  assert.ok(!out.includes("/silinen-haber/"), "silinen kart gitmeli");
+});
+
+test("removeCard: olmayan slug gridi degistirmez", () => {
+  const p = page(legacy("x", "X"));
+  assert.equal(removeCard(p, "yok-boyle"), p);
 });
 
 test("prependCards: grid kabi yoksa hata", () => {
