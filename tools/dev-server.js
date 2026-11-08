@@ -14,8 +14,9 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { gitSync } from "./lib/git-sync.js";
 import { parseFrontmatter, validatePost } from "./lib/frontmatter.js";
 import { isSafeSlug, assertSafeSlug } from "./lib/slug.js";
 import { renderPost } from "./lib/render.js";
@@ -74,6 +75,24 @@ if (!OAUTH.clientId || !OAUTH.clientSecret) {
   }
 }
 const AUTH_READY = Boolean(OAUTH.clientId && OAUTH.clientSecret);
+
+// Kalicilik: yayin/silme sonrasi GitHub'a commit+push (bkz. lib/git-sync.js).
+// GITHUB_TOKEN yoksa (lokal) tamamen kapali; commit'i elle atarsin.
+function detectBranch() {
+  try {
+    const b = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: ROOT })
+      .toString().trim();
+    return b && b !== "HEAD" ? b : null;      // detached HEAD -> env/varsayilan
+  } catch { return null; }
+}
+const GIT = {
+  token: process.env.GITHUB_TOKEN || "",
+  repo: process.env.GIT_REPO || "XR-Masters/website",
+  branch: process.env.GIT_BRANCH || detectBranch() || "main",
+  name: process.env.GIT_NAME || "XR Masters Panel",
+  email: process.env.GIT_EMAIL || "panel@xr-masters.com",
+};
+const syncToGit = (message) => gitSync({ root: ROOT, ...GIT, message });
 
 // Oturumlari diske sakla ki sunucu yeniden baslayinca kullanici cikmasin.
 // sessions.local.json .gitignore'dadir (icinde oturum token'lari var).
@@ -363,8 +382,9 @@ async function api(req, res, url) {
     if (old && old !== target) fs.rmSync(old);
     fs.writeFileSync(target, frontmatterOf(post), "utf8");
     const build = await runBuild();
+    const synced = await syncToGit(`panel: ${post.draft ? "taslak" : "yayin"} ${slug}`);
     return json(res, 200, {
-      ok: build.ok, file: path.basename(target), log: build.log,
+      ok: build.ok, file: path.basename(target), log: build.log, synced,
       url: post.draft ? null : `/site/${underType(type, slug)}/`,
     });
   }
@@ -389,7 +409,8 @@ async function api(req, res, url) {
       if (after !== before) fs.writeFileSync(newsPage, after, "utf8");
     }
     const build = await runBuild();
-    return json(res, 200, { ok: build.ok, log: build.log });
+    const synced = await syncToGit(`panel: sil ${seg[1]}`);
+    return json(res, 200, { ok: build.ok, log: build.log, synced });
   }
 
   // POST /api/preview
