@@ -9,8 +9,12 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
-# De statische site + panel + tools staan al in de repo; geen build-stap nodig.
+# De statische site + panel + tools staan al in de repo.
 COPY . .
+
+# Regenereer site/ uit content/*.md zodat op GitHub bewaarde posts (via de
+# Contents-API persistentie) bij elke deploy weer in de site verschijnen.
+RUN npm run build
 
 # Railway geeft PORT via env; dev-server leest process.env.PORT.
 CMD ["node", "tools/dev-server.js"]

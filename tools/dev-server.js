@@ -16,7 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFile, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { gitSync } from "./lib/git-sync.js";
+import { putFile, removeFile } from "./lib/github-content.js";
 import { parseFrontmatter, validatePost } from "./lib/frontmatter.js";
 import { isSafeSlug, assertSafeSlug } from "./lib/slug.js";
 import { renderPost } from "./lib/render.js";
@@ -76,7 +76,9 @@ if (!OAUTH.clientId || !OAUTH.clientSecret) {
 }
 const AUTH_READY = Boolean(OAUTH.clientId && OAUTH.clientSecret);
 
-// Kalicilik: yayin/silme sonrasi GitHub'a commit+push (bkz. lib/git-sync.js).
+// Kalicilik: yayin/silme sonrasi postun KAYNAK markdown'ini GitHub'a yaz/sil
+// (Contents API, bkz. lib/github-content.js). Dockerfile build'i content/ ->
+// site/ yeniden urettigi icin yalniz markdown'in kalici olmasi yeter.
 // GITHUB_TOKEN yoksa (lokal) tamamen kapali; commit'i elle atarsin.
 function detectBranch() {
   try {
@@ -89,10 +91,19 @@ const GIT = {
   token: process.env.GITHUB_TOKEN || "",
   repo: process.env.GIT_REPO || "XR-Masters/website",
   branch: process.env.GIT_BRANCH || detectBranch() || "main",
-  name: process.env.GIT_NAME || "XR Masters Panel",
-  email: process.env.GIT_EMAIL || "panel@xr-masters.com",
 };
-const syncToGit = (message) => gitSync({ root: ROOT, ...GIT, message });
+// Mutlak dosya yolu -> repo-goreli ("content/news/2026-...-slug.md", ileri slash).
+const repoRel = (abs) => path.relative(ROOT, abs).split(path.sep).join("/");
+async function persistPut(abs, content, message) {
+  if (!GIT.token) return { skipped: true };
+  try { return await putFile({ ...GIT, path: repoRel(abs), content, message }); }
+  catch (e) { console.error("[persist]", e.message); return { ok: false, error: e.message }; }
+}
+async function persistRemove(abs, message) {
+  if (!GIT.token) return { skipped: true };
+  try { return await removeFile({ ...GIT, path: repoRel(abs), message }); }
+  catch (e) { console.error("[persist]", e.message); return { ok: false, error: e.message }; }
+}
 
 // Oturumlari diske sakla ki sunucu yeniden baslayinca kullanici cikmasin.
 // sessions.local.json .gitignore'dadir (icinde oturum token'lari var).
@@ -379,10 +390,13 @@ async function api(req, res, url) {
     fs.mkdirSync(dir, { recursive: true });
     const old = mdFileFor(type.key, slug);
     const target = path.join(dir, `${post.date}-${slug}.md`);
+    const md = frontmatterOf(post);
     if (old && old !== target) fs.rmSync(old);
-    fs.writeFileSync(target, frontmatterOf(post), "utf8");
+    fs.writeFileSync(target, md, "utf8");
     const build = await runBuild();
-    const synced = await syncToGit(`panel: ${post.draft ? "taslak" : "yayin"} ${slug}`);
+    // Kalicilik: kaynak markdown'i GitHub'a yaz (eski ad degistiyse onu sil).
+    if (old && old !== target) await persistRemove(old, `panel: yeniden adlandir ${slug}`);
+    const synced = await persistPut(target, md, `panel: ${post.draft ? "taslak" : "yayin"} ${slug}`);
     return json(res, 200, {
       ok: build.ok, file: path.basename(target), log: build.log, synced,
       url: post.draft ? null : `/site/${underType(type, slug)}/`,
@@ -409,7 +423,8 @@ async function api(req, res, url) {
       if (after !== before) fs.writeFileSync(newsPage, after, "utf8");
     }
     const build = await runBuild();
-    const synced = await syncToGit(`panel: sil ${seg[1]}`);
+    // Kalicilik: kaynak markdown'i GitHub'dan da sil.
+    const synced = await persistRemove(hit.file, `panel: sil ${seg[1]}`);
     return json(res, 200, { ok: build.ok, log: build.log, synced });
   }
 
