@@ -35,9 +35,14 @@ export function personFor(id) {
 }
 
 // --- rastgele deger (state / oturum anahtari) ---
+// Web Crypto kullan: Workers'da globalThis.crypto hazir; Node'da ise global
+// crypto ancak 19+'da var, o yuzden node:crypto'nun webcrypto'suna dus.
+import { webcrypto } from "node:crypto";
+const webCrypto = globalThis.crypto ?? webcrypto;
+
 export function randomToken(bytes = 32) {
   const buf = new Uint8Array(bytes);
-  globalThis.crypto.getRandomValues(buf);
+  webCrypto.getRandomValues(buf);
   return [...buf].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
