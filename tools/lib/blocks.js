@@ -424,12 +424,17 @@ export function renderBlocks(blocks, ctx) {
 
 // Hem canvas hem yayinlanan sayfa AYNI gorunmesi icin ortak temel stil.
 // builder.js bunu panele <style> olarak enjekte eder; yayinlamada da gomulur.
-export function pageCss() {
-  return `
+export function pageCss({ editor = false } = {}) {
+  // Blok cercevesi (siyah border) SADECE panel editorunde gorunur; hangi blok
+  // nerede belli olsun diye. Yayinlanan sitede ve onizlemede cerceve YOK.
+  const editBorders = editor
+    ? `.xb-page>*{border:1.5px solid #1a1a1a;}.xb-page>.xb-cols{border:0;}.xb-col>*{border:1.5px solid #1a1a1a;}`
+    : "";
+  return `${editBorders}
 .xb-page{font-family:Roboto,"Helvetica Neue",Arial,sans-serif;color:#2b2f31;line-height:1.7;font-size:17px;}
-.xb-page>*{margin:0 0 20px;border:1.5px solid #1a1a1a;padding:14px 16px;}
+.xb-page>*{margin:0 0 20px;padding:14px 16px;}
 .xb-page>.xb-cols{border:0;padding:0;}
-.xb-col>*{border:1.5px solid #1a1a1a;padding:14px 16px;}
+.xb-col>*{padding:14px 16px;}
 .xb-page>*:first-child{margin-top:0;}
 .xb-page a:not(.xb-button):not(.xb-post){color:#0068A3;text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px;}
 .xb-page a:not(.xb-button):not(.xb-post):hover{color:#004165;}

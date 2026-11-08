@@ -18,7 +18,7 @@ const SAME = { credentials: "same-origin" };
 // Blok gorunumu canvas'ta da yayinlanan sayfadaki gibi olsun: ortak stili ekle.
 const styleEl = document.createElement("style");
 styleEl.id = "xb-page-style";
-styleEl.textContent = pageCss();
+styleEl.textContent = pageCss({ editor: true });   // editorde blok cerceveleri gorunur
 document.head.appendChild(styleEl);
 
 // ---------- durum ----------

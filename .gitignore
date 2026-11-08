@@ -27,6 +27,9 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
+# graphify kennisgraaf (lokaal artefact)
+graphify-out/
+
 # editor
 .vscode/
 .idea/
