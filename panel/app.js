@@ -139,7 +139,7 @@ function enterApp(user) {
 
 $("btn-logout").onclick = async () => {
   try { await api.post("/api/logout", {}); } catch { /* yoksay */ }
-  location.href = "/";          // cookie sunucuda silindi
+  location.href = "/admin/";    // cookie sunucuda silindi
 };
 
 function updateCatHint() {

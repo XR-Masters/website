@@ -247,7 +247,7 @@ async function api(req, res, url) {
   // GET /api/callback -> code'u takas et, allowlist'i kontrol et
   if (req.method === "GET" && seg[0] === "callback") {
     const fail = (msg) =>
-      redirect(res, `/?error=${encodeURIComponent(msg)}`,
+      redirect(res, `/admin/?error=${encodeURIComponent(msg)}`,
         [cookie(STATE_COOKIE, "", { maxAge: 0, sameSite: "Lax" })]);
 
     if (url.searchParams.get("error")) {
@@ -281,7 +281,7 @@ async function api(req, res, url) {
     const s = createSession(user);
     saveSessions();
     console.log(`[auth] giris: ${user.login} (id ${user.id})`);
-    return redirect(res, "/", [
+    return redirect(res, "/admin/", [
       cookie(SESSION_COOKIE, s.token, { maxAge: s.expiresIn }),
       cookie(STATE_COOKIE, "", { maxAge: 0, sameSite: "Lax" }),
     ]);
@@ -511,6 +511,25 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // Panel yonetim arayuzu /admin altinda (site kok'u kaplamasin diye).
+  if (url.pathname === "/admin") return redirect(res, "/admin/");
+  if (url.pathname.startsWith("/admin/")) {
+    let rel = url.pathname.slice("/admin".length);   // "/", "/app.js", ...
+    if (rel === "/") rel = "/index.html";
+    const f = safeJoin(PANEL, rel);
+    if (!f) { res.writeHead(403); res.end("403"); return; }
+    return serveFile(res, f);
+  }
+
+  // Panel'in paylasilan lib modulleri
+  if (url.pathname.startsWith("/lib/")) {
+    const f = safeJoin(path.join(ROOT, "tools", "lib"), url.pathname.slice("/lib".length));
+    if (!f) { res.writeHead(403); res.end("403"); return; }
+    return serveFile(res, f);
+  }
+
+  // /site/ de calismaya devam eder: panel'in urettigi baglantilar (onizleme,
+  // yayinlanan post, kapak/logo thumbnail'leri) bu onek'i kullanir.
   if (url.pathname.startsWith("/site/")) {
     let f = safeJoin(SITE, url.pathname.slice("/site".length));
     if (!f) { res.writeHead(403); res.end("403"); return; }
@@ -518,30 +537,21 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, f);
   }
 
-  // Canli sitedeki gibi kok-mutlak asset yollari site/ altindan gelir
-  // (blok gorselleri "/assets/blog/..." kullanir; editorde + onizlemede gorunsun).
-  if (url.pathname.startsWith("/assets/") || url.pathname.startsWith("/wp-content/")) {
-    const f = safeJoin(SITE, url.pathname);
-    if (f && fs.existsSync(f)) return serveFile(res, f);
-  }
-
-  const rel = url.pathname === "/" ? "/index.html" : url.pathname;
-  if (rel.startsWith("/lib/")) {
-    const f = safeJoin(path.join(ROOT, "tools", "lib"), rel.slice("/lib".length));
-    if (!f) { res.writeHead(403); res.end("403"); return; }
-    return serveFile(res, f);
-  }
-  const f = safeJoin(PANEL, rel);
-  if (!f) { res.writeHead(403); res.end("403"); return; }
-  serveFile(res, f);
+  // DIGER HER SEY = canli site, kok'ten servis edilir. Sitenin kendi nav
+  // linkleri kok-mutlak ("/about-us/", "/news/", "/wp-content/..."); artik
+  // dogru cozulurler. Dizinlerde index.html'e dus.
+  let sf = safeJoin(SITE, url.pathname === "/" ? "/index.html" : url.pathname);
+  if (!sf) { res.writeHead(403); res.end("403"); return; }
+  if (!path.extname(sf)) sf = path.join(sf, "index.html");
+  serveFile(res, sf);
 });
 
 // Host: Railway/host'ta (PUBLIC_URL verilince) tum arabirimlere (0.0.0.0) bagla,
 // yoksa lokalde yalniz 127.0.0.1 (LAN'a acilmasin).
 const HOST = process.env.PUBLIC_URL ? "0.0.0.0" : "127.0.0.1";
 server.listen(PORT, HOST, () => {
-  console.log(`\n  Panel : ${BASE}/`);
-  console.log(`  Site  : ${BASE}/site/`);
+  console.log(`\n  Panel : ${BASE}/admin/`);
+  console.log(`  Site  : ${BASE}/`);
   console.log(`  Giris : GitHub OAuth`);
   if (AUTH_READY) {
     console.log(`  Yetki : ${ALLOWED.map((u) => u.login).join(", ")}`);
