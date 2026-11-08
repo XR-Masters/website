@@ -4,7 +4,7 @@
 import { escapeHtml, renderMarkdown, toPlainText } from "./sanitize.js";
 import { assertSafeSlug } from "./slug.js";
 import { getType, underType } from "./content-types.js";
-import { renderBlocks, pageCss } from "./blocks.js";
+import { renderBlocks, pageCss, firstImageSrc } from "./blocks.js";
 
 export const SITE_URL = "https://www.xr-masters.com";
 export const TITLE_SUFFIX = " • VR Masters, LLC (DBA: XR Masters)";
@@ -169,7 +169,7 @@ export function renderPost({ data, body, slug }, { template, seoGraph, meta, typ
   const description = data.description ? String(data.description)
     : data.teaser ? String(data.teaser)
       : data.editor === "blocks" ? "" : toPlainText(body, 160);
-  const cover = data.cover ?? null;
+  let cover = data.cover ?? null;
   const format = data.video ? "video" : "standard";
   const postId = postIdFor(slug);
   const url = postUrl(slug, type.key);
@@ -181,6 +181,9 @@ export function renderPost({ data, body, slug }, { template, seoGraph, meta, typ
     let parsed;
     try { parsed = JSON.parse(body); } catch { throw new Error(`${slug}: bloklar gecerli JSON degil`); }
     const blocks = Array.isArray(parsed) ? parsed : (parsed && parsed.blocks) || [];
+    // Kapak (thumbnail) yoksa govdedeki ILK fotografa dus: haber karti + og:image
+    // onu kullanir. Ayri thumbnail yuklendiyse ona dokunmayiz.
+    if (!cover) cover = firstImageSrc(blocks);
     // blok stilleri icerige gomulur (sablon .xb-* bilmiyor); canvas ile ayni gorunum
     contentHtml = `<style>${pageCss()}</style>` + renderBlocks(blocks);
   } else {

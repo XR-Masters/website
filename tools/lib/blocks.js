@@ -48,6 +48,31 @@ function imgSrc(s) {
   return u ? rootSrc(u) : null;
 }
 
+// Kapak yoksa haber karti + og:image govdedeki ILK fotografa dussun diye:
+// bloklari (ic ice kolonlar dahil) SIRAYLA tarar, ilk gecerli gorselin src'sini
+// kapak bicimine cevirir ("assets/blog/x.webp" - bassiz; harici http oldugu gibi).
+export function firstImageSrc(blocks) {
+  for (const b of (Array.isArray(blocks) ? blocks : [])) {
+    if (!b || typeof b !== "object") continue;
+    const p = b.props || {};
+    let hit = null;
+    if (b.type === "image") hit = p.src;
+    else if (b.type === "gallery" && Array.isArray(p.images)) {
+      hit = (p.images.find((im) => im && safeUrl(im.src)) || {}).src;
+    } else if (b.type === "slider" && Array.isArray(p.slides)) {
+      hit = (p.slides.find((s) => s && safeUrl(s.src)) || {}).src;
+    } else if (b.type === "columns" && Array.isArray(p.children)) {
+      for (const col of p.children) {
+        const nested = firstImageSrc(Array.isArray(col) ? col : []);
+        if (nested) return nested;
+      }
+    }
+    const u = hit && safeUrl(hit);
+    if (u) return /^https?:\/\//i.test(u) ? u : u.replace(/^(?:\.\.\/)+/, "").replace(/^\/+/, "");
+  }
+  return null;
+}
+
 // ---------- kucuk, guvenli satir-ici bicimlendirme ----------
 // Once TUM metin escape edilir (etiket enjeksiyonu imkansiz), sonra yalnizca
 // **kalin**, *egik*, [metin](url) ve satir sonu bizim etiketlerimize cevrilir.

@@ -2,8 +2,48 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   esc, safeUrl, inline, videoEmbed, styleString, renderBlock, renderBlocks,
-  defaultProps, TYPES,
+  defaultProps, TYPES, firstImageSrc,
 } from "../tools/lib/blocks.js";
+
+test("firstImageSrc: ilk image blogunun src'si (bassiz, kapak bicimi)", () => {
+  const blocks = [
+    { type: "heading", props: { html: "Baslik" } },
+    { type: "image", props: { src: "/assets/blog/2026/11/foto.webp" } },
+    { type: "image", props: { src: "/assets/blog/ikinci.webp" } },
+  ];
+  assert.equal(firstImageSrc(blocks), "assets/blog/2026/11/foto.webp");
+});
+
+test("firstImageSrc: image yoksa galeri/slider'in ilk gorseline duser", () => {
+  assert.equal(firstImageSrc([
+    { type: "text", props: { html: "yazi" } },
+    { type: "gallery", props: { images: [{ src: "assets/blog/g1.webp" }] } },
+  ]), "assets/blog/g1.webp");
+  assert.equal(firstImageSrc([
+    { type: "slider", props: { slides: [{ src: "assets/blog/s1.webp" }] } },
+  ]), "assets/blog/s1.webp");
+});
+
+test("firstImageSrc: ic ice kolonlardaki gorseli de bulur", () => {
+  assert.equal(firstImageSrc([
+    { type: "columns", props: { children: [
+      [{ type: "text", props: {} }],
+      [{ type: "image", props: { src: "assets/blog/kolon.webp" } }],
+    ] } },
+  ]), "assets/blog/kolon.webp");
+});
+
+test("firstImageSrc: gorsel yoksa / tehlikeli src ise null", () => {
+  assert.equal(firstImageSrc([{ type: "text", props: { html: "x" } }]), null);
+  assert.equal(firstImageSrc([{ type: "image", props: { src: "javascript:alert(1)" } }]), null);
+  assert.equal(firstImageSrc([]), null);
+  assert.equal(firstImageSrc(null), null);
+});
+
+test("firstImageSrc: harici http gorsel oldugu gibi kalir", () => {
+  assert.equal(firstImageSrc([{ type: "image", props: { src: "https://cdn.x/a.jpg" } }]),
+    "https://cdn.x/a.jpg");
+});
 
 test("esc: tehlikeli karakterler kacirilir", () => {
   assert.equal(esc(`<script>&"'`), "&lt;script&gt;&amp;&quot;&#39;");
