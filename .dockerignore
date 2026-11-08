@@ -1,6 +1,5 @@
 node_modules
 .git
-tools/generated
 *.part
 video's
 videos
