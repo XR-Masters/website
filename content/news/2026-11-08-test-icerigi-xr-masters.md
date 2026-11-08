@@ -2,6 +2,7 @@
 title: "Test Icerigi-XR-Masters"
 date: 2026-11-08
 editor: blocks
+sections: "featured"
 draft: false
 ---
 
