@@ -16,7 +16,7 @@ import { TYPES, loadTypeAssets } from "./lib/content-types.js";
 import { buildLegacyIndex, sortByDateDesc } from "./lib/legacy.js";
 import { collectPages, buildSitemap, buildRobots } from "./lib/sitemap.js";
 import { prependCards, countCards } from "./lib/listing.js";
-import { prependHomeRecent } from "./lib/homepage.js";
+import { fillRecent, fillFeatured } from "./lib/homepage.js";
 
 const SITE = "site";
 const GEN = path.join("tools", "generated");
@@ -109,17 +109,20 @@ function main() {
       + `${fresh.length} yeni basa eklendi`);
   }
 
-  // Ana sayfa "Most Recent" (News widget): en yeni blog postlari basa ekle.
-  // KURAL 2B/3: Featured ve Media ETIKETLI postlar burada GORUNMEZ (kendi
-  // bolumlerine gider); Customer Success dahil kalir.
+  // Ana sayfa bolumleri (News widget = Most Recent, + Featured seridi).
+  // KURAL 2B/3: Most Recent, Featured/Media ETIKETLILERI icermez; Customer
+  // Success dahil. Featured = en yeni 2 featured. (Medya/CS sonraki adimda.)
   const homePage = path.join(SITE, "index.html");
   const recent = fresh.filter((e) =>
     !e.sections.includes("featured") && !e.sections.includes("media"));
-  if (recent.length && fs.existsSync(homePage)) {
+  const featured = fresh.filter((e) => e.sections.includes("featured"));
+  if ((recent.length || featured.length) && fs.existsSync(homePage)) {
     const before = fs.readFileSync(homePage, "utf8");
-    const after = prependHomeRecent(before, recent);
+    // Once Recent (orijinal News grid'ini hedefler), sonra Featured ustune.
+    let after = fillRecent(before, recent);
+    after = fillFeatured(after, featured);
     if (after !== before) fs.writeFileSync(homePage, after, "utf8");
-    console.log(`home recent: ${recent.length} yeni post anasayfaya eklendi`);
+    console.log(`home       : recent +${recent.length}, featured +${Math.min(featured.length, 2)}`);
   }
 
   const pages = collectPages(SITE);

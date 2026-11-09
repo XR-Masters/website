@@ -1,14 +1,16 @@
-// Ana sayfadaki bolumleri icerik indeksinden doldurur (News widget = Most
-// Recent). /news/ grid'indeki prependCards mantiginin ayni: panelden gelen
-// yeni postlari widget'in BASINA ekler, mevcut (legacy) kartlara dokunmaz,
-// sona dogru kirpar. Yeniden calistirmak (her deploy) kart cogaltmaz.
+// Ana sayfadaki bolumleri icerik indeksinden doldurur. build.js her deploy'da
+// TEMIZ (commit'li, legacy) homepage uzerinde calistigi icin fonksiyonlar
+// idempotent olmasa da sonuc hep ayni: legacy + guncel icerik.
 //
-// KURAL: Most Recent, Featured ve Media etiketli postlari ICERMEZ (onlar kendi
-// bolumlerine gider); build.js suzup oyle verir.
+// KURALLAR:
+//  - Most Recent (News widget): en yeni blog, Featured/Media HARIC (Customer
+//    Success dahil). build.js suzup verir.
+//  - Featured: News basliginin altina "Featured" seridi (en yeni 2).
+//  - Featured, Most Recent'tan ONCE doldurulur ki fillRecent orijinal News
+//    grid'ini (tek wpcap-grid) hedeflesin; Featured seridi ONUN ustune girer.
 
 import { escapeHtml } from "./sanitize.js";
 
-// Kapak yolu -> src. Panelden kok-mutlak ("assets/blog/..."), disaridan tam URL.
 function coverSrc(cover) {
   if (!cover) return null;
   const s = String(cover);
@@ -16,8 +18,7 @@ function coverSrc(cover) {
   return "/" + s.replace(/^(?:\.\.\/)+/, "").replace(/^\/+/, "");
 }
 
-// Ana sayfa "elementor-blog-posts" (wpcap) kart iskeleti. Mevcut kartlarla ayni
-// sinif seti; sade <img> (legacy'deki lazy/srcset olmadan — tek kapak gorseli).
+// Ana sayfa "elementor-blog-posts" (wpcap) kart iskeleti; sade <img> (tek kapak).
 export function renderHomeCard(post) {
   const url = escapeHtml(post.url || `/${post.slug}/`);
   const title = escapeHtml(post.title || post.slug);
@@ -42,26 +43,54 @@ export function renderHomeCard(post) {
         </article>`;
 }
 
-const WPCAP = /<article[^>]*class="wpcap-post[\s\S]*?<\/article>/g;
+// openEnd (acilis <div ...>'inden SONRAKI index) -> eslesen </div>'in indexi.
+// Ic ice div'leri sayarak dogru kapanisi bulur (regex'in tek seviye sorunu yok).
+function matchingDivEnd(html, openEnd) {
+  const re = /<\/?div\b[^>]*>/g;
+  re.lastIndex = openEnd;
+  let depth = 1, m;
+  while ((m = re.exec(html))) {
+    depth += m[0][1] === "/" ? -1 : 1;
+    if (depth === 0) return m.index;
+  }
+  return -1;
+}
 
-// Yeni postlari News widget'inin basina ekle. wpcap-post yalniz bu widget'ta
-// gectigi icin tum eslesmeler bu widget'in kartlaridir.
-export function prependHomeRecent(html, posts, { limit = 9 } = {}) {
-  const matches = [...html.matchAll(WPCAP)];
-  if (!matches.length) return html;            // widget yok: dokunma
-  const first = matches[0].index;
-  const lastM = matches[matches.length - 1];
-  const end = lastM.index + lastM[0].length;
+const RECENT_OPEN = /<div class="wpcap-grid-container[^"]*">/;
 
+// Most Recent: News grid'inin icine yeni kartlari basa ekle, legacy'yi koru,
+// limit'e kirp. (div-eslesmeli: grid'in dogru sinirini bulur.)
+export function fillRecent(html, posts, { limit = 9 } = {}) {
+  const m = RECENT_OPEN.exec(html);
+  if (!m) return html;
+  const innerStart = m.index + m[0].length;
+  const closeIdx = matchingDivEnd(html, innerStart);
+  if (closeIdx === -1) return html;
+  const inner = html.slice(innerStart, closeIdx);
+  const existing = [...inner.matchAll(/<article[\s\S]*?<\/article>/g)].map((x) => x[0]);
   const ids = new Set(posts.map((p) => `post-${p.id ?? 0}`));
-  const kept = matches
-    .map((m) => m[0])
-    .filter((a) => {
-      const id = /id="(post-\d+)"/.exec(a);
-      return !id || !ids.has(id[1]);           // ayni post tekrar eklenmesin
-    });
+  const kept = existing.filter((a) => {
+    const id = /id="(post-\d+)"/.exec(a);
+    return !id || !ids.has(id[1]);
+  });
+  const cards = [...posts.map(renderHomeCard), ...kept].slice(0, limit);
+  return `${html.slice(0, innerStart)}\n${cards.join("\n")}\n${html.slice(closeIdx)}`;
+}
 
-  const fresh = posts.map(renderHomeCard);
-  const cards = [...fresh, ...kept].slice(0, limit).join("\n\n        ");
-  return html.slice(0, first) + cards + html.slice(end);
+// News basliginin altindaki "Updates & Recent Accomplishments" kabindan ONCE
+// bir "Featured" seridi ekler (en yeni 2). TEMIZ homepage'de bu kap yok, build
+// her seferinde temizden basladigi icin cogalmaz.
+const FEATURED_ANCHOR = '<div class="elementor-element elementor-element-9543c66';
+
+export function fillFeatured(html, posts, { limit = 2 } = {}) {
+  if (!posts.length) return html;
+  const i = html.indexOf(FEATURED_ANCHOR);
+  if (i === -1) return html;
+  const cards = posts.slice(0, limit).map(renderHomeCard).join("\n");
+  const block = `<div class="elementor-element elementor-widget elementor-widget-heading" data-xrm="featured-head"><div class="elementor-widget-container"><h4 class="elementor-heading-title elementor-size-default">Featured</h4></div></div>
+<div class="elementor-element elementor-grid-2 elementor-grid-tablet-2 elementor-grid-mobile-1 elementor-widget elementor-widget-elementor-blog-posts" data-xrm="featured" data-widget_type="elementor-blog-posts.default"><div class="elementor-widget-container"><div class="wpcap-grid"><div class="wpcap-grid-container elementor-grid wpcap-grid-desktop-2 wpcap-grid-tablet-2 wpcap-grid-mobile-1 xrm-featured-grid">
+${cards}
+</div></div></div></div>
+`;
+  return html.slice(0, i) + block + html.slice(i);
 }

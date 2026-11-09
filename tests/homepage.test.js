@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { renderHomeCard, prependHomeRecent } from "../tools/lib/homepage.js";
+import { renderHomeCard, fillRecent, fillFeatured } from "../tools/lib/homepage.js";
 
 const post = (over = {}) => ({
   slug: "yeni", title: "Yeni Post", teaser: "Ozet", url: "/yeni/",
@@ -40,7 +40,7 @@ test("renderHomeCard: baslik/ozet XSS kacirilir", () => {
 });
 
 test("prependHomeRecent: yeni kart basa gelir, legacy korunur", () => {
-  const out = prependHomeRecent(page(legacy(11, "eski", "Eski")), [post()]);
+  const out = fillRecent(page(legacy(11, "eski", "Eski")), [post()]);
   // yeni kart, eski karttan ONCE gelmeli (News widget'in basinda)
   assert.ok(out.indexOf('/yeni/') < out.indexOf('/eski/'), "yeni once gelmeli");
   assert.ok(out.includes("Eski"), "legacy kart durmali");
@@ -48,19 +48,35 @@ test("prependHomeRecent: yeni kart basa gelir, legacy korunur", () => {
 
 test("prependHomeRecent: limit asilinca en eski duser", () => {
   const olds = Array.from({ length: 9 }, (_, i) => legacy(100 + i, `eski-${i}`, `E${i}`));
-  const out = prependHomeRecent(page(...olds), [post()], { limit: 9 });
+  const out = fillRecent(page(...olds), [post()], { limit: 9 });
   assert.equal((out.match(/class="wpcap-post/g) || []).length, 9);
   assert.ok(out.includes("/yeni/"));
   assert.ok(!out.includes("/eski-8/"), "en eski dusmeli");
 });
 
 test("prependHomeRecent: ayni post tekrar eklenince cogalmaz", () => {
-  const once = prependHomeRecent(page(legacy(11, "eski", "Eski")), [post()]);
-  const twice = prependHomeRecent(once, [post()]);
+  const once = fillRecent(page(legacy(11, "eski", "Eski")), [post()]);
+  const twice = fillRecent(once, [post()]);
   assert.equal((twice.match(/id="post-20001"/g) || []).length, 1);
 });
 
 test("prependHomeRecent: widget yoksa HTML degismez", () => {
   const h = "<div>geen widget</div>";
-  assert.equal(prependHomeRecent(h, [post()]), h);
+  assert.equal(fillRecent(h, [post()]), h);
+});
+
+test("fillFeatured: News basligi altina Featured seridi + en yeni 2", () => {
+  const anchor = `<div class="elementor-element elementor-element-9543c66 e-con">X</div>`;
+  const page = `<h2>News</h2>${anchor}`;
+  const f = (n) => post({ slug: `f${n}`, id: 30000 + n, url: `/f${n}/`, sections: ["featured"] });
+  const out = fillFeatured(page, [f(1), f(2), f(3)]);
+  assert.match(out, />Featured</);
+  assert.equal((out.match(/class="wpcap-post/g) || []).length, 2, "sadece 2 featured");
+  assert.ok(out.indexOf(">Featured<") < out.indexOf("9543c66"), "serit anchor'dan once");
+  assert.ok(out.includes("/f1/") && out.includes("/f2/") && !out.includes("/f3/"));
+});
+
+test("fillFeatured: featured yoksa HTML degismez", () => {
+  const page = `<div class="elementor-element elementor-element-9543c66">X</div>`;
+  assert.equal(fillFeatured(page, []), page);
 });
