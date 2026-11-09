@@ -479,9 +479,13 @@ async function api(req, res, url) {
       const ext = path.extname(safe);
       name = `${path.basename(safe, ext)}-${i++}${ext}`;
     }
-    fs.writeFileSync(path.join(dir, name), buf);
+    const abs = path.join(dir, name);
+    fs.writeFileSync(abs, buf);
+    // Kalicilik: gorseli de GitHub'a yaz (yoksa redeploy'da kaybolur, post'ta
+    // kirik gorsel kalir). Binary -> putFile Buffer'i base64'ler.
+    const synced = await persistPut(abs, buf, `panel: media ${name}`);
     return json(res, 200, {
-      ok: true, path: `${MEDIA_REL}/${yyyy}/${mm}/${name}`, bytes: buf.length,
+      ok: true, path: `${MEDIA_REL}/${yyyy}/${mm}/${name}`, bytes: buf.length, synced,
     });
   }
 

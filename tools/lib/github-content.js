@@ -28,15 +28,15 @@ async function currentSha({ token, repo, branch, path }) {
   return (await r.json()).sha;
 }
 
-// content'i repoya yaz (yeni dosya ya da ustune yaz). content: string (utf8).
+// content'i repoya yaz (yeni dosya ya da ustune yaz). content: string (utf8)
+// VEYA Buffer (ikili dosyalar, orn. gorsel).
 export async function putFile({ token, repo, branch, path, content, message }) {
   if (!token) return { skipped: true };
   const sha = await currentSha({ token, repo, branch, path });
-  const body = {
-    message, branch,
-    content: Buffer.from(content, "utf8").toString("base64"),
-    ...(sha ? { sha } : {}),
-  };
+  const b64 = Buffer.isBuffer(content)
+    ? content.toString("base64")
+    : Buffer.from(content, "utf8").toString("base64");
+  const body = { message, branch, content: b64, ...(sha ? { sha } : {}) };
   const r = await fetch(`${API}/repos/${repo}/contents/${encodeURI(path)}`, {
     method: "PUT", headers: headers(token), body: JSON.stringify(body),
   });
