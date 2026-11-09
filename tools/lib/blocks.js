@@ -163,52 +163,52 @@ const styleAttr = (style) => {
 // fields -> ayar panelinde "Icerik" sekmesini uretir. Her tipin STIL ve
 // GELISMIS sekmeleri ortaktir (asagidaki STYLE_FIELDS).
 export const CATEGORIES = [
-  { key: "layout", label: "Düzen" },
+  { key: "layout", label: "Layout" },
   { key: "text", label: "Metin" },
   { key: "media", label: "Medya" },
-  { key: "interactive", label: "Etkileşim" },
+  { key: "interactive", label: "Interactive" },
 ];
 
 export const TYPES = {
   heading: {
-    label: "Başlık", cat: "text", icon: "H", inlineEdit: "text",
+    label: "Heading", cat: "text", icon: "H", inlineEdit: "text",
     fields: [
-      { k: "text", type: "text", label: "Metin", def: "Başlık" },
-      { k: "level", type: "select", label: "Düzey", opts: ["h1", "h2", "h3", "h4"], def: "h2" },
+      { k: "text", type: "text", label: "Text", def: "Heading" },
+      { k: "level", type: "select", label: "Level", opts: ["h1", "h2", "h3", "h4"], def: "h2" },
     ],
   },
   text: {
-    label: "Metin", cat: "text", icon: "¶", inlineEdit: "text",
-    fields: [{ k: "text", type: "textarea", label: "Metin", def: "Buraya yazın. **kalın**, *eğik*, [bağlantı](https://) desteklenir." }],
+    label: "Text", cat: "text", icon: "¶", inlineEdit: "text",
+    fields: [{ k: "text", type: "textarea", label: "Text", def: "Write here. **bold**, *italic*, [link](https://) are supported." }],
   },
   quote: {
-    label: "Alıntı", cat: "text", icon: "❝", inlineEdit: "text",
+    label: "Quote", cat: "text", icon: "❝", inlineEdit: "text",
     fields: [
-      { k: "text", type: "textarea", label: "Alıntı", def: "Alıntı metni..." },
+      { k: "text", type: "textarea", label: "Quote", def: "Quote text..." },
       { k: "author", type: "text", label: "Kaynak", def: "" },
     ],
   },
   list: {
     label: "Liste", cat: "text", icon: "•",
     fields: [
-      { k: "items", type: "textarea", label: "Maddeler (her satır bir madde)", def: "Birinci\nİkinci\nÜçüncü" },
-      { k: "ordered", type: "bool", label: "Numaralı", def: false },
+      { k: "items", type: "textarea", label: "Items (one per line)", def: "First\nSecond\nThird" },
+      { k: "ordered", type: "bool", label: "Numbered", def: false },
     ],
   },
   button: {
-    label: "Düğme", cat: "interactive", icon: "▭", inlineEdit: "text",
+    label: "Button", cat: "interactive", icon: "▭", inlineEdit: "text",
     fields: [
-      { k: "text", type: "text", label: "Metin", def: "Tıkla" },
-      { k: "url", type: "text", label: "Bağlantı", def: "https://" },
+      { k: "text", type: "text", label: "Text", def: "Click" },
+      { k: "url", type: "text", label: "Link", def: "https://" },
     ],
   },
   image: {
-    label: "Görsel", cat: "media", icon: "🖼",
+    label: "Image", cat: "media", icon: "🖼",
     fields: [
-      { k: "src", type: "media", label: "Görsel", def: "" },
+      { k: "src", type: "media", label: "Image", def: "" },
       { k: "alt", type: "text", label: "Alt metin", def: "" },
-      { k: "caption", type: "text", label: "Alt yazı", def: "" },
-      { k: "url", type: "text", label: "Bağlantı (isteğe bağlı)", def: "" },
+      { k: "caption", type: "text", label: "Caption", def: "" },
+      { k: "url", type: "text", label: "Link (optional)", def: "" },
     ],
   },
   youtube: {
@@ -216,66 +216,66 @@ export const TYPES = {
     fields: [
       { k: "url", type: "text", label: "YouTube/Vimeo linki", def: "" },
       { k: "ratio", type: "select", label: "Oran", opts: ["16:9", "4:3", "1:1"], def: "16:9" },
-      { k: "caption", type: "text", label: "Alt yazı", def: "" },
+      { k: "caption", type: "text", label: "Caption", def: "" },
     ],
   },
   gallery: {
-    label: "Galeri", cat: "media", icon: "▦",
+    label: "Gallery", cat: "media", icon: "▦",
     fields: [
-      { k: "images", type: "imagelist", label: "Görseller" },
-      { k: "cols", type: "select", label: "Sütun", opts: ["2", "3", "4"], def: "3" },
+      { k: "images", type: "imagelist", label: "Images" },
+      { k: "cols", type: "select", label: "Columns", opts: ["2", "3", "4"], def: "3" },
     ],
   },
   slider: {
-    label: "Slayt / Carousel", cat: "media", icon: "❰❱",
+    label: "Slide / Carousel", cat: "media", icon: "❰❱",
     fields: [
       { k: "slides", type: "imagelist", label: "Slaytlar" },
-      { k: "dots", type: "bool", label: "Nokta göstergeleri", def: true },
-      { k: "autoplay", type: "bool", label: "Otomatik geçiş (yayında)", def: false },
+      { k: "dots", type: "bool", label: "Dot indicators", def: true },
+      { k: "autoplay", type: "bool", label: "Auto-advance (published)", def: false },
     ],
   },
   callout: {
     label: "Vurgu kutusu", cat: "interactive", icon: "❗", inlineEdit: "text",
     fields: [
-      { k: "icon", type: "text", label: "İkon (emoji)", def: "💡" },
-      { k: "text", type: "textarea", label: "Metin", def: "Önemli bir not..." },
+      { k: "icon", type: "text", label: "Icon (emoji)", def: "💡" },
+      { k: "text", type: "textarea", label: "Text", def: "An important note..." },
     ],
   },
   bubble: {
-    label: "Konuşma balonu", cat: "interactive", icon: "💬", inlineEdit: "text",
+    label: "Speech bubble", cat: "interactive", icon: "💬", inlineEdit: "text",
     fields: [
       { k: "text", type: "textarea", label: "Metin", def: "Merhaba!" },
-      { k: "shape", type: "select", label: "Biçim", opts: ["round", "speech", "box"], def: "speech" },
-      { k: "tail", type: "select", label: "Kuyruk yönü", opts: ["left", "right", "bottom", "none"], def: "left" },
+      { k: "shape", type: "select", label: "Shape", opts: ["round", "speech", "box"], def: "speech" },
+      { k: "tail", type: "select", label: "Tail direction", opts: ["left", "right", "bottom", "none"], def: "left" },
     ],
   },
   columns: {
-    label: "Kolonlar", cat: "layout", icon: "▦",
-    fields: [{ k: "cols", type: "select", label: "Kolon sayısı", opts: ["2", "3"], def: "2" }],
+    label: "Columns", cat: "layout", icon: "▦",
+    fields: [{ k: "cols", type: "select", label: "Number of columns", opts: ["2", "3"], def: "2" }],
   },
-  divider: { label: "Ayırıcı", cat: "layout", icon: "―", fields: [] },
+  divider: { label: "Divider", cat: "layout", icon: "―", fields: [] },
   spacer: {
-    label: "Boşluk", cat: "layout", icon: "↕",
-    fields: [{ k: "height", type: "number", label: "Yükseklik (px)", def: 40 }],
+    label: "Spacer", cat: "layout", icon: "↕",
+    fields: [{ k: "height", type: "number", label: "Height (px)", def: 40 }],
   },
 };
 
 // Her blokta ortak STIL ve GELISMIS alanlari.
 export const STYLE_FIELDS = [
   { k: "align", type: "select", label: "Hizalama", opts: ["left", "center", "right"], def: "left" },
-  { k: "color", type: "color", label: "Yazı rengi" },
+  { k: "color", type: "color", label: "Text color" },
   { k: "background", type: "color", label: "Arka plan" },
-  { k: "fontSize", type: "number", label: "Yazı boyutu (px)" },
-  { k: "padding", type: "number", label: "İç boşluk (px)" },
-  { k: "radius", type: "number", label: "Köşe yuvarlama (px)" },
-  { k: "width", type: "number", label: "Genişlik (px)" },
-  { k: "height", type: "number", label: "Yükseklik (px)" },
-  { k: "maxWidth", type: "number", label: "En fazla genişlik (px)" },
+  { k: "fontSize", type: "number", label: "Font size (px)" },
+  { k: "padding", type: "number", label: "Padding (px)" },
+  { k: "radius", type: "number", label: "Corner radius (px)" },
+  { k: "width", type: "number", label: "Width (px)" },
+  { k: "height", type: "number", label: "Height (px)" },
+  { k: "maxWidth", type: "number", label: "Max width (px)" },
 ];
 export const ADVANCED_FIELDS = [
-  { k: "marginTop", type: "number", label: "Üst boşluk (px)" },
-  { k: "marginBottom", type: "number", label: "Alt boşluk (px)" },
-  { k: "hideDesktop", type: "bool", label: "Masaüstünde gizle", def: false },
+  { k: "marginTop", type: "number", label: "Margin top (px)" },
+  { k: "marginBottom", type: "number", label: "Margin bottom (px)" },
+  { k: "hideDesktop", type: "bool", label: "Hide on desktop", def: false },
   { k: "hideMobile", type: "bool", label: "Mobilde gizle", def: false },
 ];
 
@@ -334,7 +334,7 @@ export function renderBlock(block, ctx) {
     }
     case "image": {
       const src = imgSrc(p.src);
-      if (!src) return `<div class="xb-image xb-empty${vis}"${sa}>Görsel seçin</div>`;
+      if (!src) return `<div class="xb-image xb-empty${vis}"${sa}>Select an image</div>`;
       const cap = p.caption ? `<figcaption class="xb-caption">${esc(p.caption)}</figcaption>` : "";
       let img = `<img class="xb-img" src="${esc(src)}" alt="${esc(p.alt)}" loading="lazy">`;
       const u = safeUrl(p.url);
@@ -345,7 +345,7 @@ export function renderBlock(block, ctx) {
       const v = videoEmbed(p.url);
       const cap = p.caption ? `<figcaption class="xb-caption">${esc(p.caption)}</figcaption>` : "";
       if (!v) {
-        return `<div class="xb-video xb-empty${vis}"${sa}>Geçerli bir YouTube/Vimeo linki girin</div>`;
+        return `<div class="xb-video xb-empty${vis}"${sa}>Enter a valid YouTube/Vimeo link</div>`;
       }
       const pad = RATIO[p.ratio] || RATIO["16:9"];
       return `<figure class="xb-video${vis}"${sa}>`
@@ -356,7 +356,7 @@ export function renderBlock(block, ctx) {
     }
     case "gallery": {
       const imgs = (Array.isArray(p.images) ? p.images : []).filter((im) => imgSrc(im && im.src));
-      if (!imgs.length) return `<div class="xb-empty${vis}"${sa}>Galeri için görsel ekleyin</div>`;
+      if (!imgs.length) return `<div class="xb-empty${vis}"${sa}>Add images for the gallery</div>`;
       const n = ["2", "3", "4"].includes(p.cols) ? p.cols : "3";
       const cells = imgs.map((im) => {
         const cap = im.caption ? `<figcaption class="xb-caption">${esc(im.caption)}</figcaption>` : "";
@@ -366,7 +366,7 @@ export function renderBlock(block, ctx) {
     }
     case "slider": {
       const sl = (Array.isArray(p.slides) ? p.slides : []).filter((s) => imgSrc(s && s.src));
-      if (!sl.length) return `<div class="xb-empty${vis}"${sa}>Slayt için görsel ekleyin</div>`;
+      if (!sl.length) return `<div class="xb-empty${vis}"${sa}>Add images for the slider</div>`;
       const slides = sl.map((s) => {
         const cap = s.caption ? `<div class="xb-slide-cap">${esc(s.caption)}</div>` : "";
         return `<div class="xb-slide"><img src="${esc(imgSrc(s.src))}" alt="${esc(s.alt)}" loading="lazy">${cap}</div>`;
@@ -395,9 +395,9 @@ export function renderBlock(block, ctx) {
       const n = Math.max(1, Math.min(Number(p.count) || 3, 24));
       const cols = ["1", "2", "3"].includes(p.columns) ? p.columns : "3";
       const posts = ctx && Array.isArray(ctx.posts) ? ctx.posts : null;
-      if (!posts) return `<div class="xb-empty${vis}"${sa}>Blog/haber listesi — yayında en yeni ${n} yazı listelenir</div>`;
+      if (!posts) return `<div class="xb-empty${vis}"${sa}>Blog/news list — shows the latest ${n} posts when published</div>`;
       const items = posts.filter((x) => src === "all" || x.category === src).slice(0, n);
-      if (!items.length) return `<div class="xb-empty${vis}"${sa}>Bu kaynakta yazı yok</div>`;
+      if (!items.length) return `<div class="xb-empty${vis}"${sa}>No posts in this source</div>`;
       const cards = items.map((x) => {
         const url = safeUrl(x.url || "") || "#";
         const img = x.cover ? `<img src="${esc(rootSrc(x.cover))}" alt="" loading="lazy">` : "";

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,16 +8,16 @@
                script-src 'self';
                frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com;
                connect-src 'self'">
-<title>XR Masters - Blog Paneli</title>
+<title>XR Masters - Blog Panel</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- giris ekrani -->
+<!-- login screen -->
 <section id="login" class="login">
   <div class="login-box">
     <img src="xrm-logo.webp" alt="XR Masters" class="login-logo" width="88" height="88">
-    <h1>İçerik Paneli<span>Blog &amp; haber yönetimi</span></h1>
+    <h1>Content Panel<span>Blog &amp; news management</span></h1>
     <a id="btn-login" class="btn btn-primary btn-lg" href="/api/login">
       <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"
            fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53
@@ -29,179 +29,180 @@
         .07 2.12.47.52.76 1.18.76 1.99 0 1.97-1.13 2.64-2.92 2.84.29.26.55.75.55
         1.52 0 1.09-.01 1.97-.01 2.24 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8
         c0-4.42-3.58-8-8-8Z"/></svg>
-      GitHub ile giriş yap
+      Sign in with GitHub
     </a>
     <p class="hint" id="login-hint"></p>
     <p class="hint err-text" id="login-error" hidden></p>
-    <p class="hint muted">Yalnızca yetkili GitHub hesapları girebilir.</p>
+    <p class="hint muted">Only authorized GitHub accounts can sign in.</p>
   </div>
 </section>
 
-<!-- uygulama: WordPress tarzi yonetim duzeni -->
+<!-- app: WordPress-style admin layout -->
 <div id="app" hidden>
   <header class="wp-topbar">
-    <button id="nav-toggle" class="wp-icon-btn" aria-label="Menüyü aç/kapat"
+    <button id="nav-toggle" class="wp-icon-btn" aria-label="Toggle menu"
       aria-expanded="true" aria-controls="sidebar">☰</button>
     <div class="brand">
       <img src="xrm-logo.webp" alt="XR Masters" class="brand-logo" width="34" height="34">
-      <span class="brand-sub">İçerik Paneli</span>
+      <span class="brand-sub">Content Panel</span>
     </div>
-    <a class="wp-site-link" href="/" target="_blank" rel="noopener">Siteyi gör ↗</a>
+    <a class="wp-site-link" href="/" target="_blank" rel="noopener">View site ↗</a>
     <div class="spacer"></div>
     <span id="mode-badge" class="badge"></span>
     <div class="user">
       <div id="avatar" class="avatar"></div>
       <span id="username"></span>
     </div>
-    <button id="btn-logout" class="btn btn-ghost">Çıkış</button>
+    <button id="btn-logout" class="btn btn-ghost">Sign out</button>
   </header>
 
   <div class="wp-shell">
-    <!-- sol menu: yalnizca calisan bolumler (F22) -->
-    <nav id="sidebar" class="wp-sidebar" aria-label="Ana menü">
+    <!-- left menu: only working sections (F22) -->
+    <nav id="sidebar" class="wp-sidebar" aria-label="Main menu">
       <button class="wp-nav-item" data-nav="news">
-        <svg class="wp-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h13v14H6a2 2 0 0 1-2-2V5Z"/><path d="M17 8h3v9a2 2 0 0 1-2 2"/><path d="M8 8h5M8 12h5M8 16h3"/></svg> Haberler</button>
+        <svg class="wp-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h13v14H6a2 2 0 0 1-2-2V5Z"/><path d="M17 8h3v9a2 2 0 0 1-2 2"/><path d="M8 8h5M8 12h5M8 16h3"/></svg> Blog</button>
       <button class="wp-nav-item" data-nav="projects">
-        <svg class="wp-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 18 9 5 9-5"/></svg> Projeler</button>
+        <svg class="wp-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 18 9 5 9-5"/></svg> Projects</button>
       <div class="wp-nav-sep"></div>
       <button class="wp-nav-item wp-nav-cta" data-nav="new">
-        <svg class="wp-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> Yeni içerik</button>
+        <svg class="wp-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> New post</button>
       <button class="wp-nav-item" data-nav="archive">
-        <svg class="wp-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg> Arşiv</button>
+        <svg class="wp-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg> Archive</button>
     </nav>
 
     <div class="wp-content">
-      <!-- liste -->
+      <!-- list -->
       <main id="view-list" class="view">
         <div class="view-head">
-          <h2>İçerikler <span id="count" class="muted"></span></h2>
+          <h2>Posts <span id="count" class="muted"></span></h2>
           <div class="row">
             <select id="filter-cat" class="input"></select>
-            <input id="search" type="search" placeholder="Başlıkta ara..." class="input">
-            <button id="btn-new" class="btn btn-primary">+ Yeni içerik</button>
+            <input id="search" type="search" placeholder="Search titles..." class="input">
+            <button id="btn-new" class="btn btn-primary">+ New post</button>
           </div>
         </div>
         <div id="list" class="list"></div>
       </main>
 
-      <!-- arsiv: bitirilmemis icerikler (cihazda otomatik saklanir) -->
+      <!-- archive: unfinished content (auto-saved on device) -->
       <main id="view-archive" class="view" hidden>
         <div class="view-head">
-          <h2>Arşiv <span id="arch-count" class="muted"></span></h2>
-          <button id="btn-arch-new" class="btn btn-primary">+ Yeni içerik</button>
+          <h2>Archive <span id="arch-count" class="muted"></span></h2>
+          <button id="btn-arch-new" class="btn btn-primary">+ New post</button>
         </div>
-        <p class="muted">Bitirmediğin içerikler bu cihazda otomatik saklanır. Yayınlayınca otomatik silinir.</p>
+        <p class="muted">Unfinished content is saved automatically on this device. It is removed once published.</p>
         <div id="arch-list" class="list"></div>
       </main>
 
       <!-- editor -->
       <main id="view-editor" class="view" hidden>
         <div class="editor-topbar">
-          <button id="btn-back" class="btn btn-ghost">&larr; Listeye dön</button>
-          <h2 id="editor-heading" class="editor-heading">İçerik</h2>
+          <button id="btn-back" class="btn btn-ghost">&larr; Back to list</button>
+          <h2 id="editor-heading" class="editor-heading">Post</h2>
         </div>
 
         <div class="editor-grid">
-          <!-- ana kolon: baslik + govde -->
+          <!-- main column: title + body -->
           <div class="col-body">
             <label class="field-title">
-              <span class="sr-only">Başlık</span>
-              <input id="f-title" class="input title-input" placeholder="İçerik başlığı">
+              <span class="sr-only">Title</span>
+              <input id="f-title" class="input title-input" placeholder="Post title">
             </label>
 
-            <label>Slug (adres)
+            <label>Slug (address)
               <div class="row tight">
-                <input id="f-slug" class="input mono" placeholder="otomatik-olusur">
-                <button id="btn-reslug" class="btn btn-ghost" title="Başlıktan yeniden üret">↻</button>
+                <input id="f-slug" class="input mono" placeholder="auto-generated">
+                <button id="btn-reslug" class="btn btn-ghost" title="Regenerate from title">↻</button>
               </div>
               <small class="muted" id="slug-preview"></small>
             </label>
 
-            <label>İçerik (markdown)
+            <label>Content (markdown)
               <div class="md-tools">
-                <button data-wrap="**" title="Kalın (Ctrl+B)"><b>B</b></button>
-                <button data-wrap="*" title="Eğik (Ctrl+I)"><i>I</i></button>
-                <button data-wrap="`" title="Kod" class="mono">&lt;/&gt;</button>
+                <button data-wrap="**" title="Bold (Ctrl+B)"><b>B</b></button>
+                <button data-wrap="*" title="Italic (Ctrl+I)"><i>I</i></button>
+                <button data-wrap="`" title="Code" class="mono">&lt;/&gt;</button>
                 <span class="md-sep"></span>
-                <button data-prefix="## " title="Başlık">H2</button>
-                <button data-prefix="### " title="Alt başlık">H3</button>
-                <button data-prefix="#### " title="Küçük başlık">H4</button>
+                <button data-prefix="## " title="Heading">H2</button>
+                <button data-prefix="### " title="Subheading">H3</button>
+                <button data-prefix="#### " title="Small heading">H4</button>
                 <span class="md-sep"></span>
-                <button data-prefix="- " title="Madde listesi">&bull;</button>
-                <button data-prefix="1. " title="Numaralı liste">1.</button>
-                <button data-prefix="&gt; " title="Alıntı">&rdquo;</button>
+                <button data-prefix="- " title="Bullet list">&bull;</button>
+                <button data-prefix="1. " title="Numbered list">1.</button>
+                <button data-prefix="&gt; " title="Quote">&rdquo;</button>
                 <span class="md-sep"></span>
-                <button data-md="link" title="Bağlantı (Ctrl+K)">🔗</button>
-                <button data-md="image" title="Kapak görselini ekle">🖼</button>
-                <button data-md="hr" title="Ayırıcı çizgi">―</button>
+                <button data-md="link" title="Link (Ctrl+K)">🔗</button>
+                <button data-md="image" title="Insert cover image">🖼</button>
+                <button data-md="hr" title="Divider">―</button>
                 <span class="md-sep"></span>
-                <button data-md="media" title="Görsel yükle ve ekle">⬆️</button>
-                <button data-md="video" title="YouTube/Vimeo videosu ekle">▶️</button>
-                <button data-md="skeleton" title="Yazı iskeletini ekle">🧱</button>
+                <button data-md="media" title="Upload &amp; insert image">⬆️</button>
+                <button data-md="video" title="Insert YouTube/Vimeo video">▶️</button>
+                <button data-md="skeleton" title="Insert post skeleton">🧱</button>
               </div>
             </label>
             <div id="body-split" class="body-split">
               <textarea id="f-body" class="input mono body" rows="22"
-                placeholder="Markdown ile yaz..."></textarea>
-              <iframe id="live-frame" class="live-frame" title="Canlı önizleme" hidden></iframe>
+                placeholder="Write in Markdown..."></textarea>
+              <iframe id="live-frame" class="live-frame" title="Live preview" hidden></iframe>
             </div>
             <small class="muted body-stats">
-              <span id="body-words">0</span> kelime &middot;
-              <span id="body-chars">0</span> karakter
+              <span id="body-words">0</span> words &middot;
+              <span id="body-chars">0</span> characters
             </small>
             <input id="f-media-file" type="file" accept="image/*" hidden>
           </div>
 
-          <!-- sag kenar: yayinla kutusu + ayarlar (WordPress tarzi) -->
+          <!-- right rail: publish box + settings (WordPress-style) -->
           <aside class="col-side">
             <fieldset class="wp-box">
-              <legend>Yayınla</legend>
+              <legend>Publish</legend>
               <div class="wp-box-actions">
-                <button id="btn-live" class="btn">Canlı önizleme</button>
-                <button id="btn-preview" class="btn">Önizle</button>
-                <button id="btn-draft" class="btn">Taslak kaydet</button>
-                <button id="btn-publish" class="btn btn-primary">Yayınla</button>
+                <button id="btn-live" class="btn">Live preview</button>
+                <button id="btn-preview" class="btn">Preview</button>
+                <button id="btn-draft" class="btn">Save draft</button>
+                <button id="btn-publish" class="btn btn-primary">Publish</button>
               </div>
             </fieldset>
 
-            <label>Tarih
+            <label>Date
               <input id="f-date" type="date" class="input">
             </label>
 
-            <label>Kategori
+            <label>Type
               <select id="f-cat" class="input"></select>
               <small class="muted" id="cat-hint"></small>
             </label>
 
             <fieldset class="cover">
-              <legend>Bölümler</legend>
+              <legend>Categories</legend>
               <div class="checks">
+                <label class="radio"><input type="checkbox" checked disabled> Blog <small class="muted">(always)</small></label>
                 <label class="radio"><input type="checkbox" name="section" value="featured"> Featured</label>
                 <label class="radio"><input type="checkbox" name="section" value="media"> Media</label>
                 <label class="radio"><input type="checkbox" name="section" value="customer-success"> Customer Success</label>
-                <label class="radio"><input type="checkbox" name="section" value="mygeoverse"> mygeoverse</label>
+                <label class="radio"><input type="checkbox" name="section" value="mygeoverse"> MyGeoVerse</label>
               </div>
-              <small class="muted">Gönderi aynı anda birden fazla bölümde görünebilir. URL'yi değiştirmez.</small>
+              <small class="muted">Every post is a Blog post. Add any of the above (multiple allowed). Customer Success requires a logo.</small>
             </fieldset>
 
-            <label>Açıklama
+            <label>Description
               <textarea id="f-desc" class="input" rows="3"
-                placeholder="Liste kartında ve Google'da görünecek özet"></textarea>
-              <small class="muted"><span id="desc-count">0</span> / 160 karakter
+                placeholder="Summary shown on the list card and in Google"></textarea>
+              <small class="muted"><span id="desc-count">0</span> / 160 characters
                 <span id="desc-warn" class="warn"></span></small>
             </label>
 
             <fieldset class="cover">
-              <legend>Kapak</legend>
+              <legend>Cover</legend>
               <div class="row">
-                <label class="radio"><input type="radio" name="covertype" value="image" checked> Görsel</label>
+                <label class="radio"><input type="radio" name="covertype" value="image" checked> Image</label>
                 <label class="radio"><input type="radio" name="covertype" value="video"> Video</label>
-                <label class="radio"><input type="radio" name="covertype" value="none"> Yok</label>
+                <label class="radio"><input type="radio" name="covertype" value="none"> None</label>
               </div>
 
               <div id="cover-image">
                 <input id="f-file" type="file" accept="image/*" class="input">
-                <small class="muted">Yüklemeden önce tarayıcıda 1920px / WebP'ye küçültülür.</small>
+                <small class="muted">Resized to 1920px / WebP in the browser before upload.</small>
                 <div id="cover-status" class="status"></div>
                 <img id="cover-thumb" class="thumb" hidden alt="">
                 <input id="f-cover" class="input mono" placeholder="assets/blog/...">
@@ -209,23 +210,23 @@
 
               <div id="cover-video" hidden>
                 <input id="f-video" class="input" placeholder="https://www.youtube.com/watch?v=...">
-                <small class="muted">Önerilen: YouTube veya Vimeo linki.</small>
+                <small class="muted">Recommended: a YouTube or Vimeo link.</small>
               </div>
             </fieldset>
 
             <fieldset class="cover">
               <legend>Logo</legend>
               <input id="f-logo-file" type="file" accept="image/*" class="input">
-              <small class="muted">Projects / Customer Success için ana sayfada gösterilir.</small>
+              <small class="muted">Shown on the homepage for Projects / Customer Success.</small>
               <div id="logo-status" class="status"></div>
               <img id="logo-thumb" class="thumb" hidden alt="">
               <input id="f-logo" class="input mono" placeholder="assets/blog/...">
             </fieldset>
 
             <fieldset class="cover">
-              <legend>Galeri</legend>
+              <legend>Gallery</legend>
               <input id="f-gallery-file" type="file" accept="image/*" multiple class="input">
-              <small class="muted">Birden fazla görsel; gönderinin en altında galeri olarak çıkar.</small>
+              <small class="muted">Multiple images; shown as a gallery at the bottom of the post.</small>
               <div id="gallery-status" class="status"></div>
               <div id="gallery-list" class="gallery-list"></div>
             </fieldset>
@@ -235,114 +236,115 @@
         <div id="progress" class="progress" hidden>
           <div class="bar"><div id="bar-fill"></div></div>
           <p id="progress-text"></p>
-          <a id="result-link" class="btn btn-primary" hidden target="_blank" rel="noopener">Gönderiyi aç</a>
+          <a id="result-link" class="btn btn-primary" hidden target="_blank" rel="noopener">Open post</a>
         </div>
       </main>
 
-      <!-- gorsel blok editoru (post govdesi) -->
+      <!-- visual block editor (post body) -->
       <main id="view-builder" class="view bld" hidden>
         <div class="bld-topbar">
-          <button id="bld-back" class="btn btn-ghost">&larr; Panele dön</button>
-          <input id="bld-title" class="input bld-title" placeholder="Başlık">
-          <div class="bld-devices" role="group" aria-label="Cihaz önizleme">
-            <button class="bld-dev active" data-dev="desktop" title="Masaüstü" aria-label="Masaüstü">🖥</button>
+          <button id="bld-back" class="btn btn-ghost">&larr; Back to panel</button>
+          <input id="bld-title" class="input bld-title" placeholder="Title">
+          <div class="bld-devices" role="group" aria-label="Device preview">
+            <button class="bld-dev active" data-dev="desktop" title="Desktop" aria-label="Desktop">🖥</button>
             <button class="bld-dev" data-dev="tablet" title="Tablet" aria-label="Tablet">▭</button>
-            <button class="bld-dev" data-dev="mobile" title="Mobil" aria-label="Mobil">▯</button>
+            <button class="bld-dev" data-dev="mobile" title="Mobile" aria-label="Mobile">▯</button>
           </div>
           <div class="spacer"></div>
-          <button id="bld-undo" class="btn btn-ghost" title="Geri al (Ctrl+Z)" aria-label="Geri al">↶</button>
-          <button id="bld-redo" class="btn btn-ghost" title="İleri al (Ctrl+Y)" aria-label="İleri al">↷</button>
-          <button id="bld-preview" class="btn">Önizle</button>
-          <button id="bld-save" class="btn">Kaydet</button>
-          <button id="bld-publish" class="btn btn-primary">Yayınla</button>
+          <button id="bld-undo" class="btn btn-ghost" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+          <button id="bld-redo" class="btn btn-ghost" title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
+          <button id="bld-preview" class="btn">Preview</button>
+          <button id="bld-save" class="btn">Save</button>
+          <button id="bld-publish" class="btn btn-primary">Publish</button>
         </div>
 
         <div class="bld-body">
-          <aside id="bld-palette" class="bld-palette" aria-label="Elementler">
-            <input id="bld-search" class="input" type="search" placeholder="Element ara...">
+          <aside id="bld-palette" class="bld-palette" aria-label="Elements">
+            <input id="bld-search" class="input" type="search" placeholder="Search elements...">
             <div id="bld-elements" class="bld-elements"></div>
           </aside>
 
           <div class="bld-canvas-wrap">
-            <!-- Word tarzi zengin metin araç çubuğu (metin bloğu seçiliyken) -->
+            <!-- Word-style rich text toolbar (when a text block is selected) -->
             <div id="bld-rtbar" class="bld-rtbar" hidden>
-              <button data-rt="bold" title="Kalın (seçili metin)"><b>B</b></button>
-              <button data-rt="italic" title="İtalik"><i>I</i></button>
-              <button data-rt="underline" title="Altı çizili"><u>U</u></button>
-              <button data-rt="strikeThrough" title="Üstü çizili"><s>S</s></button>
+              <button data-rt="bold" title="Bold (selected text)"><b>B</b></button>
+              <button data-rt="italic" title="Italic"><i>I</i></button>
+              <button data-rt="underline" title="Underline"><u>U</u></button>
+              <button data-rt="strikeThrough" title="Strikethrough"><s>S</s></button>
               <span class="md-sep"></span>
-              <label class="bld-rt-lab" title="Yazı rengi">A<input type="color" id="bld-rt-color" value="#004165"></label>
-              <select id="bld-rt-font" class="input" aria-label="Yazı tipi"></select>
-              <button data-rt="sizedown" title="Yazıyı küçült" class="bld-rt-az">A−</button>
-              <select id="bld-rt-size" class="input" aria-label="Boyut"></select>
-              <button data-rt="sizeup" title="Yazıyı büyüt" class="bld-rt-az">A+</button>
+              <label class="bld-rt-lab" title="Text color">A<input type="color" id="bld-rt-color" value="#004165"></label>
+              <select id="bld-rt-font" class="input" aria-label="Font"></select>
+              <button data-rt="sizedown" title="Decrease size" class="bld-rt-az">A−</button>
+              <select id="bld-rt-size" class="input" aria-label="Size"></select>
+              <button data-rt="sizeup" title="Increase size" class="bld-rt-az">A+</button>
               <span class="md-sep"></span>
-              <input id="bld-rt-link" class="input" type="text" placeholder="https://..." aria-label="Bağlantı adresi">
-              <button data-rt="link" title="Bağlantı ekle">🔗</button>
-              <button data-rt="unlink" title="Bağlantıyı kaldır">✖🔗</button>
-              <button data-rt="removeFormat" title="Biçimi temizle">⌫</button>
+              <input id="bld-rt-link" class="input" type="text" placeholder="https://..." aria-label="Link address">
+              <button data-rt="link" title="Add link">🔗</button>
+              <button data-rt="unlink" title="Remove link">✖🔗</button>
+              <button data-rt="removeFormat" title="Clear formatting">⌫</button>
             </div>
             <div id="bld-canvas" class="bld-canvas" data-dev="desktop"
-              aria-label="Sayfa tuvali"></div>
+              aria-label="Page canvas"></div>
           </div>
 
-          <aside id="bld-settings" class="bld-settings" aria-label="Ayarlar">
+          <aside id="bld-settings" class="bld-settings" aria-label="Settings">
             <div class="bld-settings-tabs">
-              <button id="bld-tab-doc" class="bld-stab active" type="button">Gönderi</button>
+              <button id="bld-tab-doc" class="bld-stab active" type="button">Post</button>
               <button id="bld-tab-el" class="bld-stab" type="button">Element</button>
             </div>
 
-            <!-- Gonderi (belge) ayarlari -->
+            <!-- Post (document) settings -->
             <div id="bld-doc" class="bld-doc">
-              <label>Kategori (tür)
+              <label>Type
                 <select id="bld-cat" class="input"></select>
-                <small class="muted">News → /slug/ · Projects → /xperiences/slug/</small>
+                <small class="muted">Blog → /slug/ · Projects → /xperiences/slug/</small>
               </label>
-              <label>Slug (adres)
-                <input id="bld-slug" class="input mono" placeholder="başlıktan otomatik">
+              <label>Slug (address)
+                <input id="bld-slug" class="input mono" placeholder="auto from title">
                 <small class="muted" id="bld-slug-prev"></small>
               </label>
               <label>Teaser
                 <textarea id="bld-teaser" class="input" rows="2"
-                  placeholder="Kısa özet — liste kartında görünür"></textarea>
+                  placeholder="Short summary — shown on the list card"></textarea>
               </label>
-              <label>Tarih
+              <label>Date
                 <input id="bld-date" type="date" class="input">
               </label>
 
               <fieldset class="cover">
-                <legend>Küçük görsel (thumbnail)</legend>
+                <legend>Thumbnail</legend>
                 <input id="bld-cover-file" type="file" accept="image/*" class="input">
                 <img id="bld-cover-thumb" class="thumb" hidden alt="">
                 <input id="bld-cover" class="input mono" placeholder="assets/blog/...">
               </fieldset>
 
               <fieldset class="cover">
-                <legend>Kategoriler</legend>
+                <legend>Categories</legend>
                 <div class="checks">
+                  <label class="radio"><input type="checkbox" checked disabled> Blog <small class="muted">(always)</small></label>
                   <label class="radio"><input type="checkbox" name="bld-section" value="featured"> Featured</label>
                   <label class="radio"><input type="checkbox" name="bld-section" value="media"> Media</label>
                   <label class="radio"><input type="checkbox" name="bld-section" value="customer-success"> Customer Success</label>
                 </div>
-                <small class="muted">Gönderi aynı anda birden fazla bölümde görünebilir.</small>
+                <small class="muted">A post can appear in multiple categories at once.</small>
               </fieldset>
 
               <fieldset class="cover">
-                <legend>Logo (Customer Success için)</legend>
+                <legend>Logo (for Customer Success)</legend>
                 <input id="bld-logo-file" type="file" accept="image/*" class="input">
                 <img id="bld-logo-thumb" class="thumb" hidden alt="">
                 <input id="bld-logo" class="input mono" placeholder="assets/blog/...">
               </fieldset>
 
-              <label>SEO açıklaması
+              <label>SEO description
                 <textarea id="bld-desc" class="input" rows="2"
-                  placeholder="Google özeti (boşsa teaser kullanılır)"></textarea>
+                  placeholder="Google summary (falls back to teaser)"></textarea>
               </label>
             </div>
 
-            <!-- Secili element ayarlari -->
+            <!-- Selected element settings -->
             <div id="bld-settings-body" hidden>
-              <p class="muted bld-settings-empty">Düzenlemek için tuvalde bir element seçin.</p>
+              <p class="muted bld-settings-empty">Select an element on the canvas to edit it.</p>
             </div>
           </aside>
         </div>
@@ -350,26 +352,26 @@
     </div>
   </div>
 
-  <!-- onizleme -->
+  <!-- preview -->
   <div id="preview" class="modal" hidden>
     <div class="modal-head">
-      <strong>Önizleme — gerçek site şablonu</strong>
+      <strong>Preview — real site template</strong>
       <div class="row">
-        <a id="preview-open" class="btn btn-ghost" target="_blank" rel="noopener">Yeni sekmede</a>
-        <button id="preview-close" class="btn">Kapat</button>
+        <a id="preview-open" class="btn btn-ghost" target="_blank" rel="noopener">New tab</a>
+        <button id="preview-close" class="btn">Close</button>
       </div>
     </div>
-    <iframe id="preview-frame" title="Önizleme"></iframe>
+    <iframe id="preview-frame" title="Preview"></iframe>
   </div>
 
-  <!-- onay -->
+  <!-- confirm -->
   <div id="confirm" class="modal small" hidden>
     <div class="confirm-box">
-      <h3 id="confirm-title">Emin misin?</h3>
+      <h3 id="confirm-title">Are you sure?</h3>
       <p id="confirm-text" class="muted"></p>
       <div class="row end">
-        <button id="confirm-no" class="btn">Vazgeç</button>
-        <button id="confirm-yes" class="btn btn-danger">Sil</button>
+        <button id="confirm-no" class="btn">Cancel</button>
+        <button id="confirm-yes" class="btn btn-danger">Delete</button>
       </div>
     </div>
   </div>

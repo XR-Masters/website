@@ -8,7 +8,7 @@ const GEN = path.join("tools", "generated");
 export const TYPES = {
   news: {
     key: "news",
-    label: "Haberler",
+    label: "Blog",
     // Haberler sitenin KOKUNDE durur: canli URL /<slug>/ seklinde.
     sitePath: "",
     contentDir: path.join("content", "news"),
@@ -22,7 +22,7 @@ export const TYPES = {
   },
   projects: {
     key: "projects",
-    label: "Projeler",
+    label: "Projects",
     sitePath: "xperiences",
     contentDir: path.join("content", "projects"),
     template: "template-projects.html",

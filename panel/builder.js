@@ -257,7 +257,7 @@ function renderCanvas() {
   if (!page.blocks.length) {
     const e = document.createElement("div");
     e.className = "bld-drop-hint";
-    e.textContent = "Soldaki elementleri buraya tıklayarak veya sürükleyerek ekleyin.";
+    e.textContent = "Add elements by clicking or dragging them from the left.";
     c.append(e);
   }
   renderInto(page.blocks, c);
@@ -285,7 +285,7 @@ function dropZone(arr, index) {
     e.stopPropagation();
     insertAt = active ? null : { arr, index };
     renderCanvas();
-    if (insertAt) { $("bld-search").focus(); toast("Eklemek için soldan bir element seçin"); }
+    if (insertAt) { $("bld-search").focus(); toast("Select an element from the left to add it"); }
   };
   d.append(plus);
   d.ondragover = (e) => { e.preventDefault(); e.stopPropagation(); d.classList.add("over"); };
@@ -344,10 +344,10 @@ function blockShell(block, arr) {
   const tb = document.createElement("div");
   tb.className = "bld-block-tb";
   tb.append(
-    tbBtn("↑", "Yukarı taşı", () => moveBlock(block.id, -1)),
-    tbBtn("↓", "Aşağı taşı", () => moveBlock(block.id, 1)),
-    tbBtn("⧉", "Çoğalt", () => duplicateBlock(block.id)),
-    tbBtn("🗑", "Sil", () => removeBlock(block.id)),
+    tbBtn("↑", "Move up", () => moveBlock(block.id, -1)),
+    tbBtn("↓", "Move down", () => moveBlock(block.id, 1)),
+    tbBtn("⧉", "Duplicate", () => duplicateBlock(block.id)),
+    tbBtn("🗑", "Delete", () => removeBlock(block.id)),
   );
   w.append(tb);
 
@@ -426,7 +426,7 @@ function addResizeHandles(w, inner, block) {
     const h = document.createElement("div");
     h.className = "bld-resize bld-resize-" + dir;
     h.draggable = false;
-    h.title = "Sürükleyerek boyutlandır";
+    h.title = "Drag to resize";
     h.onmousedown = (e) => {
       e.preventDefault(); e.stopPropagation();
       const rect = w.getBoundingClientRect();
@@ -479,7 +479,7 @@ function renderSettings() {
   if (!block) {
     const p = document.createElement("p");
     p.className = "muted bld-settings-empty";
-    p.textContent = "Düzenlemek için tuvalde bir element seçin.";
+    p.textContent = "Select an element on the canvas to edit it.";
     body.append(p);
     return;
   }
@@ -496,7 +496,7 @@ function renderSettings() {
     style: fieldSet(STYLE_FIELDS, block.props.style),
     adv: fieldSet(ADVANCED_FIELDS, block.props.style),
   };
-  for (const [key, label] of [["content", "İçerik"], ["style", "Stil"], ["adv", "Gelişmiş"]]) {
+  for (const [key, label] of [["content", "Content"], ["style", "Style"], ["adv", "Advanced"]]) {
     const tab = document.createElement("button");
     tab.type = "button";
     tab.className = "bld-tab" + (key === "content" ? " active" : "");
@@ -519,7 +519,7 @@ function fieldSet(fields, target) {
   if (!fields.length) {
     const p = document.createElement("p");
     p.className = "muted";
-    p.textContent = "Bu element için ayar yok.";
+    p.textContent = "No settings for this element.";
     pane.append(p);
     return pane;
   }
@@ -627,7 +627,7 @@ function mediaRow(f, target) {
   const pick = document.createElement("button");
   pick.type = "button";
   pick.className = "btn";
-  pick.textContent = "Yükle";
+  pick.textContent = "Upload";
   pick.onclick = () => file.click();
   file.onchange = async () => {
     if (!file.files[0]) return;
@@ -638,9 +638,9 @@ function mediaRow(f, target) {
       target[f.k] = path;
       input.value = path;
       commitEdit(); renderCanvas(); markDirty();
-      toast("Görsel yüklendi", "ok");
+      toast("Image uploaded", "ok");
     } catch (e) { toast(e.message, "err"); }
-    pick.disabled = false; pick.textContent = "Yükle";
+    pick.disabled = false; pick.textContent = "Upload";
     file.value = "";
   };
   row.append(input, pick, file);
@@ -702,7 +702,7 @@ function imageListRow(f, target) {
   const file = document.createElement("input");
   file.type = "file"; file.accept = "image/*"; file.multiple = true; file.hidden = true;
   const add = document.createElement("button");
-  add.type = "button"; add.className = "btn"; add.textContent = "Görsel ekle";
+  add.type = "button"; add.className = "btn"; add.textContent = "Add image";
   add.onclick = () => file.click();
   file.onchange = async () => {
     const files = [...file.files];
@@ -714,7 +714,7 @@ function imageListRow(f, target) {
       catch (e) { toast(e.message, "err"); }
     }
     commitEdit(); renderCanvas(); renderSettings(); markDirty();
-    add.disabled = false; add.textContent = "Görsel ekle";
+    add.disabled = false; add.textContent = "Add image";
     file.value = "";
   };
   wrap.append(add, file);
@@ -730,7 +730,7 @@ async function uploadImage(file) {
 }
 function shrinkToWebp(file, maxSide) {
   return new Promise((resolve, reject) => {
-    if (!file.type.startsWith("image/")) { reject(new Error("Bu bir görsel değil.")); return; }
+    if (!file.type.startsWith("image/")) { reject(new Error("This is not an image.")); return; }
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
@@ -742,7 +742,7 @@ function shrinkToWebp(file, maxSide) {
       c.getContext("2d").drawImage(img, 0, 0, w, h);
       resolve(c.toDataURL("image/webp", 0.85));
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Görsel okunamadı.")); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Could not read image.")); };
     img.src = url;
   });
 }
@@ -754,19 +754,19 @@ async function postJSON(path, body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const d = await r.json().catch(() => ({ error: "Yanıt okunamadı" }));
+  const d = await r.json().catch(() => ({ error: "Could not read response" }));
   if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
   return d;
 }
 async function getJSON(path) {
   const r = await fetch(path, SAME);
-  const d = await r.json().catch(() => ({ error: "Yanıt okunamadı" }));
+  const d = await r.json().catch(() => ({ error: "Could not read response" }));
   if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
   return d;
 }
 async function delJSON(path) {
   const r = await fetch(path, { ...SAME, method: "DELETE" });
-  const d = await r.json().catch(() => ({ error: "Yanıt okunamadı" }));
+  const d = await r.json().catch(() => ({ error: "Could not read response" }));
   if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
   return d;
 }
@@ -792,7 +792,7 @@ function postSlug() {
 }
 function updateSlugPrev() {
   const s = postSlug();
-  $("bld-slug-prev").textContent = s ? (isSafeSlug(s) ? s : "Geçersiz slug") : "";
+  $("bld-slug-prev").textContent = s ? (isSafeSlug(s) ? s : "Invalid slug") : "";
 }
 
 // Form -> post nesnesi (govde = bloklar JSON, editor: blocks).
@@ -811,14 +811,14 @@ function collectPost(draft) {
     if (title) $("bld-title").value = title;   // turetileni forma yansit
   }
   const slug = postSlug();
-  if (!title) throw new Error("Başlık boş — başlık alanına yaz veya bir Başlık bloğu ekle");
-  if (!isSafeSlug(slug)) throw new Error("Geçersiz slug (a-z, 0-9, tire)");
-  if (!page.blocks.length) throw new Error("İçerik boş — en az bir blok ekle");
+  if (!title) throw new Error("Title is empty — type in the title field or add a Heading block");
+  if (!isSafeSlug(slug)) throw new Error("Invalid slug (a-z, 0-9, hyphens)");
+  if (!page.blocks.length) throw new Error("Content is empty — add at least one block");
   const sections = [...document.querySelectorAll('input[name="bld-section"]:checked')].map((c) => c.value);
   const cover = $("bld-cover").value.trim() || null;
   const logo = $("bld-logo").value.trim() || null;
   if (sections.includes("customer-success") && !logo) {
-    throw new Error("Customer Success için logo yüklemelisin");
+    throw new Error("You must upload a logo for Customer Success");
   }
   return {
     category: $("bld-cat").value,
@@ -838,14 +838,14 @@ async function save(draft) {
   try { post = collectPost(draft); } catch (e) { toast(e.message, "err"); return; }
   try {
     const r = await postJSON("/api/posts", post);
-    if (!r.ok) { toast("Build hatası:\n" + (r.log || "").slice(-300), "err"); return; }
+    if (!r.ok) { toast("Build error:\n" + (r.log || "").slice(-300), "err"); return; }
     dirty = false;
     page.slug = post.slug;
     if (draft) {
       toast("Taslak kaydedildi", "ok");
     } else {
       removeDraft(currentDraftId);   // yayinlandi -> cihazdaki arsiv taslagi silinir
-      toast("Yayınlandı", "ok");
+      toast("Published", "ok");
       if (r.url) window.open(r.url, "_blank", "noopener");
     }
   } catch (e) { toast(e.message, "err"); }
@@ -871,7 +871,7 @@ function wireUpload(fileId, pathId, thumbId) {
       $(thumbId).src = "/site/" + p;
       $(thumbId).hidden = false;
       markDirty();
-      toast("Görsel yüklendi", "ok");
+      toast("Image uploaded", "ok");
     } catch (e) { toast(e.message, "err"); }
     $(fileId).value = "";
   };
@@ -935,7 +935,7 @@ $("bld-canvas").onclick = () => {
 // font/boyut listelerini doldur
 {
   const fsel = $("bld-rt-font"), ssel = $("bld-rt-size");
-  fsel.append(new Option("Yazı tipi", ""));
+  fsel.append(new Option("Font", ""));
   for (const f of FONT_CHOICES) fsel.append(new Option(f, f));
   ssel.append(new Option("Boyut", ""));
   for (const s of SIZE_CHOICES) ssel.append(new Option(s + " px", String(s)));
@@ -1085,7 +1085,7 @@ function renderArchive() {
   if (!items.length) {
     const p = document.createElement("p");
     p.className = "muted";
-    p.textContent = "Arşiv boş. Yeni içerik başladığında burada otomatik saklanır.";
+    p.textContent = "Archive is empty. Content is saved here automatically as you start writing.";
     box.append(p);
     return;
   }
@@ -1099,7 +1099,7 @@ function archRow(d) {
   if (d.cover) thumb.style.backgroundImage = `url("${thumbUrl(d.cover).replace(/"/g, "")}")`;
   const mid = document.createElement("div");
   const h = document.createElement("h3");
-  h.textContent = d.title || "(başlıksız taslak)";
+  h.textContent = d.title || "(untitled draft)";
   const meta = document.createElement("div");
   meta.className = "meta";
   const cat = document.createElement("span"); cat.className = "tag tag-cat"; cat.textContent = d.category || "news";
@@ -1112,7 +1112,7 @@ function archRow(d) {
   const actions = document.createElement("div");
   actions.className = "actions row";
   const open = document.createElement("button");
-  open.className = "btn"; open.textContent = "Aç";
+  open.className = "btn"; open.textContent = "Open";
   open.onclick = () => window.XPanel.showBuilderArchive(d.id);
   const del = document.createElement("button");
   del.className = "btn btn-ghost"; del.textContent = "Sil";
@@ -1157,7 +1157,7 @@ window.XBuilder = {
           catch { page = { slug, title: data.title || "", blocks: [] }; }
         } else {
           page = { slug, title: data.title || "", blocks: [{ id: uid(), type: "text", props: { ...defaultProps("text"), text: d.body || "" } }] };
-          toast("Markdown gönderi blok olarak açıldı", "err");
+          toast("Markdown post opened as blocks", "err");
         }
       } catch (e) { toast(e.message, "err"); }
     }
@@ -1174,7 +1174,7 @@ window.XBuilder = {
     else {
       page = { slug: "", title: "", blocks: [] };
       currentDraftId = "new-" + Date.now().toString(36);
-      toast("Taslak bulunamadı", "err");
+      toast("Draft not found", "err");
     }
     finishOpen();
   },

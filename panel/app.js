@@ -29,7 +29,7 @@ const api = {
 async function handle(res) {
   const data = await res.json().catch(() => ({ error: "Yanit okunamadi" }));
   if (res.status === 401) {
-    showLogin("Oturum süresi doldu, tekrar giriş yap.");
+    showLogin("Session expired, please sign in again.");
     throw new Error(data.error || "Oturum gecersiz");
   }
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -76,20 +76,20 @@ async function boot() {
     categories = cfg.categories;
   } catch {
     $("login-hint").textContent =
-      "Sunucuya ulaşılamadı. Terminalde: node tools/dev-server.js";
+      "Could not reach the server. In the terminal: node tools/dev-server.js";
     $("btn-login").removeAttribute("href");
     return;
   }
 
   if (!cfg.authReady) {
     $("login-hint").textContent =
-      "GitHub OAuth yapılandırılmamış: tools/lib/oauth.local.example.js dosyasını "
-      + "oauth.local.js olarak kopyalayıp doldur.";
+      "GitHub OAuth is not configured: copy tools/lib/oauth.local.example.js "
+      + "to oauth.local.js and fill it in.";
     $("btn-login").removeAttribute("href");
     return;
   }
   $("login-hint").textContent =
-    "Lokal mod: content/ klasörüne yazar ve build çalıştırır.";
+    "Local mode: writes to content/ and runs the build.";
 
   // Cookie hala gecerliyse girisi atla.
   //
@@ -115,7 +115,7 @@ function fillCategorySelects() {
   filter.textContent = "";
   const all = document.createElement("option");
   all.value = "";
-  all.textContent = "Tüm kategoriler";
+  all.textContent = "All categories";
   filter.append(all);
   for (const c of categories) {
     const o = document.createElement("option");
@@ -145,8 +145,8 @@ $("btn-logout").onclick = async () => {
 function updateCatHint() {
   const key = $("f-cat").value;
   $("cat-hint").textContent = key === "projects"
-    ? "Projeler Elementor şablonuyla üretilir (Xperiences sayfaları)."
-    : "Haberler blog şablonuyla üretilir.";
+    ? "Projects use the Elementor template (Xperiences pages)."
+    : "Blog posts use the blog template.";
 }
 $("f-cat").onchange = updateCatHint;
 $("filter-cat").onchange = () => renderList();
@@ -159,7 +159,7 @@ async function loadList() {
     editable = new Set(data.editable);
     renderList();
   } catch (e) {
-    toast(`Liste yüklenemedi: ${e.message}`, "err");
+    toast(`Could not load list: ${e.message}`, "err");
   }
 }
 
@@ -229,7 +229,7 @@ function renderList() {
     actions.className = "actions row";
     const view = document.createElement("a");
     view.className = "btn btn-ghost";
-    view.textContent = "Gör";
+    view.textContent = "View";
     view.target = "_blank";
     view.rel = "noopener";
     view.href = p.draft ? "#" : `/site/${underCat(p.category, p.slug)}/`;
@@ -239,7 +239,7 @@ function renderList() {
     if (canEdit) {
       const edit = document.createElement("button");
       edit.className = "btn";
-      edit.textContent = "Düzenle";
+      edit.textContent = "Edit";
       edit.onclick = () => window.XPanel.showBuilder(p.slug);
       const del = document.createElement("button");
       del.className = "btn btn-ghost";
@@ -250,8 +250,8 @@ function renderList() {
       const note = document.createElement("span");
       note.className = "muted";
       note.style.fontSize = "12px";
-      note.textContent = "düzenlenemez";
-      note.title = "WordPress'ten gelen post; markdown kaynağı yok.";
+      note.textContent = "not editable";
+      note.title = "Post from WordPress; no markdown source.";
       actions.append(note);
     }
 
@@ -262,7 +262,7 @@ function renderList() {
   if (!shown.length) {
     const empty = document.createElement("p");
     empty.className = "muted";
-    empty.textContent = "Sonuç yok.";
+    empty.textContent = "No results.";
     list.append(empty);
   }
 }
@@ -329,7 +329,7 @@ for (const r of document.querySelectorAll('input[name="covertype"]')) {
 
 async function openEditor(slug) {
   current = slug;
-  $("editor-heading").textContent = slug ? "İçerik düzenle" : "Yeni içerik";
+  $("editor-heading").textContent = slug ? "Edit post" : "New post";
   $("progress").hidden = true;
   $("cover-thumb").hidden = true;
   $("cover-status").textContent = "";
@@ -410,7 +410,7 @@ function updateSlugPreview() {
   const ok = isSafeSlug(s);
   $("slug-preview").textContent = s
     ? (ok ? `xr-masters.com/${underCat($("f-cat").value, s)}/`
-      : "Geçersiz slug: sadece a-z, 0-9 ve tire")
+      : "Invalid slug: only a-z, 0-9 and hyphens")
     : "";
   $("slug-preview").className = ok || !s ? "muted" : "warn";
 }
@@ -419,7 +419,7 @@ $("f-desc").oninput = updateDesc;
 function updateDesc() {
   const n = $("f-desc").value.length;
   $("desc-count").textContent = n;
-  $("desc-warn").textContent = n > 160 ? "— Google kısaltabilir" : "";
+  $("desc-warn").textContent = n > 160 ? "— Google may truncate" : "";
 }
 
 // ---------- markdown editor ----------
@@ -470,7 +470,7 @@ function insert(text, { select } = {}) {
 function link() {
   const ta = body();
   const sel = ta.value.slice(ta.selectionStart, ta.selectionEnd);
-  insert(`[${sel || "bağlantı metni"}](https://)`);
+  insert(`[${sel || "link text"}](https://)`);
 }
 
 function image() {
@@ -478,7 +478,7 @@ function image() {
   const sel = ta.value.slice(ta.selectionStart, ta.selectionEnd);
   // Kapak yuklediyse onun yolunu oneriyoruz; yoksa bos birakir.
   const src = $("f-cover").value.trim();
-  insert(`![${sel || "görsel açıklaması"}](${src ? "/" + src.replace(/^\/+/, "") : ""})`);
+  insert(`![${sel || "image description"}](${src ? "/" + src.replace(/^\/+/, "") : ""})`);
 }
 
 // WordPress "Add Media": gorsel yukle ve imlecin oldugu yere markdown olarak ek.
@@ -486,12 +486,12 @@ $("f-media-file").onchange = async () => {
   const file = $("f-media-file").files[0];
   if (!file) return;
   try {
-    toast("Görsel yükleniyor...");
+    toast("Uploading image...");
     const { path } = await uploadShrunk(file);
-    insert(`\n\n![görsel açıklaması](/${path})\n\n`);
+    insert(`\n\n![image description](/${path})\n\n`);
     updateBodyStats();
     scheduleLive();
-    toast("Görsel eklendi", "ok");
+    toast("Image inserted", "ok");
   } catch (e) {
     toast(e.message, "err");
   }
@@ -500,17 +500,17 @@ $("f-media-file").onchange = async () => {
 
 // Afsprakenin sabit govde iskeleti (T0): giris, video, metin, gorsel, metin.
 // Galeri ayri alandan gelir, o yuzden iskelette yok.
-const BODY_SKELETON = `## Giriş
+const BODY_SKELETON = `## Introduction
 
-Giriş metni buraya...
+Introduction text here...
 
 https://www.youtube.com/watch?v=VIDEO_ID
 
-Daha fazla metin...
+More text...
 
-![görsel açıklaması](/assets/blog/...)
+![image description](/assets/blog/...)
 
-Son metin...
+Closing text...
 `;
 
 for (const b of document.querySelectorAll(".md-tools button")) {
@@ -591,10 +591,10 @@ $("f-file").onchange = async () => {
   if (!file) return;
   const st = $("cover-status");
   st.className = "status";
-  st.textContent = "Küçültülüyor...";
+  st.textContent = "Resizing...";
   try {
     const { dataUrl, w, h, bytes } = await shrink(file, 1920);
-    st.textContent = `Yükleniyor... (${w}x${h}, ${(bytes / 1024).toFixed(0)} KB)`;
+    st.textContent = `Uploading... (${w}x${h}, ${(bytes / 1024).toFixed(0)} KB)`;
     const name = file.name.replace(/\.[^.]+$/, "") + ".webp";
     const r = await api.post("/api/media", { filename: name, dataUrl });
     $("f-cover").value = r.path;
@@ -605,7 +605,7 @@ $("f-file").onchange = async () => {
     $("cover-thumb").src = `/site/${r.path}`;
     $("cover-thumb").hidden = false;
     st.className = "status ok";
-    st.textContent = `Yüklendi: ${r.path} (${(r.bytes / 1024).toFixed(0)} KB)`;
+    st.textContent = `Uploaded: ${r.path} (${(r.bytes / 1024).toFixed(0)} KB)`;
   } catch (e) {
     st.className = "status err";
     st.textContent = e.message;
@@ -625,14 +625,14 @@ $("f-logo-file").onchange = async () => {
   if (!file) return;
   const st = $("logo-status");
   st.className = "status";
-  st.textContent = "Yükleniyor...";
+  st.textContent = "Uploading...";
   try {
     const { path, bytes } = await uploadShrunk(file);
     $("f-logo").value = path;
     $("logo-thumb").src = `/site/${path}`;
     $("logo-thumb").hidden = false;
     st.className = "status ok";
-    st.textContent = `Yüklendi: ${path} (${(bytes / 1024).toFixed(0)} KB)`;
+    st.textContent = `Uploaded: ${path} (${(bytes / 1024).toFixed(0)} KB)`;
   } catch (e) {
     st.className = "status err";
     st.textContent = e.message;
@@ -655,7 +655,7 @@ function drawGallery() {
     rm.type = "button";
     rm.className = "gallery-remove";
     rm.textContent = "×";
-    rm.title = "Kaldır";
+    rm.title = "Remove";
     rm.onclick = () => { galleryPaths.splice(i, 1); drawGallery(); };
     fig.append(rm);
     box.append(fig);
@@ -668,7 +668,7 @@ $("f-gallery-file").onchange = async () => {
   const st = $("gallery-status");
   st.className = "status";
   for (let i = 0; i < files.length; i++) {
-    st.textContent = `Yükleniyor... (${i + 1}/${files.length})`;
+    st.textContent = `Uploading... (${i + 1}/${files.length})`;
     try {
       galleryPaths.push((await uploadShrunk(files[i])).path);
       drawGallery();
@@ -679,7 +679,7 @@ $("f-gallery-file").onchange = async () => {
     }
   }
   st.className = "status ok";
-  st.textContent = `${files.length} görsel eklendi.`;
+  st.textContent = `${files.length} images inserted.`;
   $("f-gallery-file").value = "";
 };
 
@@ -695,7 +695,7 @@ function setSections(value) {
 function shrink(file, maxSide) {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) {
-      reject(new Error("Bu bir görsel değil. Video için YouTube/Vimeo linki kullan."));
+      reject(new Error("This is not an image. For video, use a YouTube/Vimeo link."));
       return;
     }
     const img = new Image();
@@ -718,7 +718,7 @@ function shrink(file, maxSide) {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Görsel okunamadı."));
+      reject(new Error("Could not read image."));
     };
     img.src = url;
   });
@@ -753,10 +753,10 @@ function previewPayload() {
 function collect(draft) {
   const p = previewPayload();
   const slug = p.slug || slugify($("f-title").value);
-  if (!p.title) throw new Error("Başlık boş olamaz");
-  if (!isSafeSlug(slug)) throw new Error("Geçersiz slug");
-  if (!p.body.trim()) throw new Error("İçerik boş olamaz");
-  if (!p.date) throw new Error("Tarih seçilmeli");
+  if (!p.title) throw new Error("Title cannot be empty");
+  if (!isSafeSlug(slug)) throw new Error("Invalid slug");
+  if (!p.body.trim()) throw new Error("Content cannot be empty");
+  if (!p.date) throw new Error("A date must be selected");
   return { ...p, slug, draft };
 }
 
@@ -791,31 +791,31 @@ async function save(draft) {
   $("result-link").hidden = true;
   box.hidden = false;
   fill.style.width = "25%";
-  text.textContent = draft ? "Taslak kaydediliyor..." : "Dosya yazılıyor...";
+  text.textContent = draft ? "Saving draft..." : "Writing file...";
   $("btn-publish").disabled = $("btn-draft").disabled = true;
 
   try {
     fill.style.width = "55%";
-    text.textContent = "Site derleniyor (build)...";
+    text.textContent = "Building the site...";
     const r = await api.post("/api/posts", post);
     fill.style.width = "100%";
-    if (!r.ok) throw new Error("Build hatası:\n" + (r.log || "").slice(-400));
+    if (!r.ok) throw new Error("Build error:\n" + (r.log || "").slice(-400));
     if (draft) {
-      text.textContent = "Taslak kaydedildi — sitede yayınlanmadı.";
-      toast("Taslak kaydedildi", "ok");
+      text.textContent = "Draft saved — not published to the site.";
+      toast("Draft saved", "ok");
     } else {
-      text.textContent = "Yayında!";
+      text.textContent = "Live!";
       const link = $("result-link");
       link.href = r.url;
       link.hidden = false;
-      toast("Gönderi yayınlandı", "ok");
+      toast("Post published", "ok");
     }
     current = post.slug;
     setTimeout(() => { if (draft) box.hidden = true; }, 2500);
   } catch (e) {
     fill.style.width = "0";
     text.textContent = e.message;
-    toast("Kaydedilemedi", "err");
+    toast("Could not save", "err");
   } finally {
     $("btn-publish").disabled = $("btn-draft").disabled = false;
   }
@@ -827,10 +827,10 @@ $("btn-publish").onclick = () => save(false);
 let pendingDelete = null;
 function askDelete(p) {
   pendingDelete = p;
-  $("confirm-title").textContent = "Gönderi silinsin mi?";
+  $("confirm-title").textContent = "Delete this post?";
   $("confirm-text").textContent =
-    `"${p.title || p.slug}" silinecek. Markdown dosyası ve üretilen sayfa kaldırılır. `
-    + "Bu işlem geri alınamaz.";
+    `"${p.title || p.slug}" will be deleted. The markdown file and generated page are removed. `
+    + "This cannot be undone.";
   $("confirm").hidden = false;
 }
 $("confirm-no").onclick = () => { $("confirm").hidden = true; pendingDelete = null; };
