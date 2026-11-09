@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { renderHomeCard, fillRecent, fillFeatured } from "../tools/lib/homepage.js";
+import {
+  renderHomeCard, fillRecent, fillFeatured, renderMediaCard, fillMedia,
+  renderLogoSlide, fillCustomerSuccess,
+} from "../tools/lib/homepage.js";
 
 const post = (over = {}) => ({
   slug: "yeni", title: "Yeni Post", teaser: "Ozet", url: "/yeni/",
@@ -79,4 +82,67 @@ test("fillFeatured: News basligi altina Featured seridi + en yeni 2", () => {
 test("fillFeatured: featured yoksa HTML degismez", () => {
   const page = `<div class="elementor-element elementor-element-9543c66">X</div>`;
   assert.equal(fillFeatured(page, []), page);
+});
+
+const mediaLegacy = (id, slug) =>
+  `<article class="elementor-post elementor-grid-item post-${id} category-media-coverage" role="listitem">`
+  + `<div class="elementor-post__text"><h3 class="elementor-post__title"><a href="/${slug}/">M${id}</a></h3></div></article>`;
+const mediaPage = (...cards) =>
+  `<h2>Media</h2><div class="elementor-posts-container elementor-posts elementor-posts--skin-classic elementor-grid" role="list">`
+  + cards.join("\n") + `</div><footer>x</footer>`;
+
+const md = (n) => post({ slug: `md${n}`, id: 40000 + n, url: `/md${n}/`, sections: ["media"] });
+
+test("fillMedia: yeni Media basa, legacy korunur (limit dolmadan)", () => {
+  const out = fillMedia(mediaPage(mediaLegacy(9001, "eski")), [md(1)], { limit: 2 });
+  assert.equal((out.match(/class="elementor-post /g) || []).length, 2, "yeni + legacy");
+  assert.ok(out.indexOf("/md1/") < out.indexOf("/eski/"), "yeni once");
+});
+
+test("fillMedia: limit 2 asilinca en eski (legacy) duser", () => {
+  const out = fillMedia(mediaPage(mediaLegacy(9001, "eski")), [md(1), md(2), md(3)], { limit: 2 });
+  assert.equal((out.match(/class="elementor-post /g) || []).length, 2);
+  assert.ok(out.includes("/md1/") && out.includes("/md2/"));
+  assert.ok(!out.includes("/md3/") && !out.includes("/eski/"), "3. ve legacy dusmeli");
+});
+
+test("fillMedia: media yoksa HTML degismez", () => {
+  const p = mediaPage(mediaLegacy(1, "x"));
+  assert.equal(fillMedia(p, []), p);
+});
+
+test("renderMediaCard: elementor-post markup + XSS", () => {
+  const html = renderMediaCard(post({ title: "<b>x</b>", sections: ["media"] }));
+  assert.match(html, /class="elementor-post elementor-grid-item post-20001/);
+  assert.match(html, /category-media-coverage/);
+  assert.ok(!html.includes("<b>x"));
+});
+
+const csPage = (...slides) =>
+  `<div class="swiper-wrapper" aria-live="off">${slides.join("")}</div><footer>x</footer>`;
+const logoSlide = (id) =>
+  `<div data-elementor-type="loop-item" class="elementor swiper-slide e-loop-item post-${id} elementor_reflogo">`
+  + `<section><div class="x">logo</div></section></div>`;
+
+test("renderLogoSlide: logo + posta link; logosuz bos", () => {
+  const html = renderLogoSlide(post({ logo: "assets/blog/l.png", sections: ["customer-success"] }));
+  assert.match(html, /elementor_reflogo/);
+  assert.match(html, /src="\/assets\/blog\/l\.png"/);
+  assert.match(html, /href="\/yeni\/"/);
+  assert.equal(renderLogoSlide(post({ logo: null })), "");
+});
+
+test("fillCustomerSuccess: yeni logo basa, mevcut 2 logo KORUNUR", () => {
+  const before = csPage(logoSlide(901), logoSlide(902));
+  const out = fillCustomerSuccess(before, [post({ logo: "assets/blog/l.png", sections: ["customer-success"] })]);
+  // mevcut 2 + 1 yeni = 3 slide
+  assert.equal((out.match(/swiper-slide/g) || []).length, 3);
+  assert.ok(out.includes("post-901") && out.includes("post-902"), "mevcut logolar durmali");
+  assert.ok(out.indexOf("/yeni/") < out.indexOf("post-901"), "yeni basa");
+});
+
+test("fillCustomerSuccess: CS postu yoksa HTML degismez (logolar korunur)", () => {
+  const before = csPage(logoSlide(901));
+  assert.equal(fillCustomerSuccess(before, []), before);
+  assert.equal(fillCustomerSuccess(before, [post({ logo: null })]), before);
 });
