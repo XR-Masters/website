@@ -4,6 +4,7 @@ node_modules/
 # LOKAL kimlik bilgileri - asla repoya girmez
 tools/lib/auth.local.js
 tools/lib/oauth.local.js
+tools/lib/sessions.local.json
 
 # Cloudflare Worker secret'lari
 .dev.vars
@@ -13,14 +14,25 @@ worker/.dev.vars
 
 # yarim kalan indirmeler / gecici
 *.part
-tools/generated/panel-ui.png
+tools/generated/panel-*.png
 tools/generated/*.tmp
+
+# toplanti kayitlari ve dokumleri - repoya girmez (yuzlerce MB)
+video's/
+videos/
+tools/generated/meeting/
 
 # isletim sistemi
 Thumbs.db
 Desktop.ini
 .DS_Store
 
+# graphify kennisgraaf (lokaal artefact)
+graphify-out/
+
 # editor
 .vscode/
 .idea/
+.obsidian/
+*.canvas
+*.base

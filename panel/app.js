@@ -29,7 +29,7 @@ const api = {
 async function handle(res) {
   const data = await res.json().catch(() => ({ error: "Yanit okunamadi" }));
   if (res.status === 401) {
-    showLogin("Oturum süresi doldu, tekrar giriş yap.");
+    showLogin("Session expired, please sign in again.");
     throw new Error(data.error || "Oturum gecersiz");
   }
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -76,25 +76,30 @@ async function boot() {
     categories = cfg.categories;
   } catch {
     $("login-hint").textContent =
-      "Sunucuya ulaşılamadı. Terminalde: node tools/dev-server.js";
+      "Could not reach the server. In the terminal: node tools/dev-server.js";
     $("btn-login").removeAttribute("href");
     return;
   }
 
   if (!cfg.authReady) {
     $("login-hint").textContent =
-      "GitHub OAuth yapılandırılmamış: tools/lib/oauth.local.example.js dosyasını "
-      + "oauth.local.js olarak kopyalayıp doldur.";
+      "GitHub OAuth is not configured: copy tools/lib/oauth.local.example.js "
+      + "to oauth.local.js and fill it in.";
     $("btn-login").removeAttribute("href");
     return;
   }
   $("login-hint").textContent =
-    "Lokal mod: content/ klasörüne yazar ve build çalıştırır.";
+    "Local mode: writes to content/ and runs the build.";
 
   // Cookie hala gecerliyse girisi atla.
+  //
+  // Bilerek api.get DEGIL duz fetch: api.get'in 401 isleyicisi "oturum
+  // suresi doldu" uyarisini gosteriyor. Bu bir YOKLAMA - ilk ziyarette
+  // oturum olmamasi normal, kullaniciya hata gibi gorunmemeli.
   try {
-    return enterApp(await api.get("/api/user"));
-  } catch { /* oturum yok: giris ekrani kalir */ }
+    const r = await fetch("/api/user", SAME_ORIGIN);
+    if (r.ok) return enterApp(await r.json());
+  } catch { /* sunucuya ulasilamadi: giris ekrani kalir */ }
 }
 
 function fillCategorySelects() {
@@ -110,7 +115,7 @@ function fillCategorySelects() {
   filter.textContent = "";
   const all = document.createElement("option");
   all.value = "";
-  all.textContent = "Tüm kategoriler";
+  all.textContent = "All categories";
   filter.append(all);
   for (const c of categories) {
     const o = document.createElement("option");
@@ -134,14 +139,14 @@ function enterApp(user) {
 
 $("btn-logout").onclick = async () => {
   try { await api.post("/api/logout", {}); } catch { /* yoksay */ }
-  location.href = "/";          // cookie sunucuda silindi
+  location.href = "/admin/";    // cookie sunucuda silindi
 };
 
 function updateCatHint() {
   const key = $("f-cat").value;
   $("cat-hint").textContent = key === "projects"
-    ? "Projeler Elementor şablonuyla üretilir (Xperiences sayfaları)."
-    : "Haberler blog şablonuyla üretilir.";
+    ? "Projects use the Elementor template (Xperiences pages)."
+    : "Blog posts use the blog template.";
 }
 $("f-cat").onchange = updateCatHint;
 $("filter-cat").onchange = () => renderList();
@@ -154,7 +159,7 @@ async function loadList() {
     editable = new Set(data.editable);
     renderList();
   } catch (e) {
-    toast(`Liste yüklenemedi: ${e.message}`, "err");
+    toast(`Could not load list: ${e.message}`, "err");
   }
 }
 
@@ -212,12 +217,19 @@ function renderList() {
     slug.textContent = p.slug;
     meta.append(tag, catTag, date, slug);
     mid.append(h, meta);
+    const teaser = (p.teaser || p.description || "").trim();
+    if (teaser) {
+      const tz = document.createElement("p");
+      tz.className = "item-teaser muted";
+      tz.textContent = teaser.length > 140 ? teaser.slice(0, 140) + "…" : teaser;
+      mid.append(tz);
+    }
 
     const actions = document.createElement("div");
     actions.className = "actions row";
     const view = document.createElement("a");
     view.className = "btn btn-ghost";
-    view.textContent = "Gör";
+    view.textContent = "View";
     view.target = "_blank";
     view.rel = "noopener";
     view.href = p.draft ? "#" : `/site/${underCat(p.category, p.slug)}/`;
@@ -227,8 +239,8 @@ function renderList() {
     if (canEdit) {
       const edit = document.createElement("button");
       edit.className = "btn";
-      edit.textContent = "Düzenle";
-      edit.onclick = () => openEditor(p.slug);
+      edit.textContent = "Edit";
+      edit.onclick = () => window.XPanel.showBuilder(p.slug);
       const del = document.createElement("button");
       del.className = "btn btn-ghost";
       del.textContent = "Sil";
@@ -238,8 +250,8 @@ function renderList() {
       const note = document.createElement("span");
       note.className = "muted";
       note.style.fontSize = "12px";
-      note.textContent = "düzenlenemez";
-      note.title = "WordPress'ten gelen post; markdown kaynağı yok.";
+      note.textContent = "not editable";
+      note.title = "Post from WordPress; no markdown source.";
       actions.append(note);
     }
 
@@ -250,18 +262,56 @@ function renderList() {
   if (!shown.length) {
     const empty = document.createElement("p");
     empty.className = "muted";
-    empty.textContent = "Sonuç yok.";
+    empty.textContent = "No results.";
     list.append(empty);
   }
 }
 
 $("search").oninput = renderList;
-$("btn-new").onclick = () => openEditor(null);
+$("btn-new").onclick = () => window.XPanel.showBuilder();
 $("btn-back").onclick = () => showView("list");
+
+// ---------- sol menu (WordPress tarzi) ----------
+// Yalnizca calisan hedefler var (F22): news/projects listeyi filtreler,
+// "new" editoru acar. Dashboard/Medya kendi bloklarinda eklenecek.
+function setActiveNav(nav) {
+  for (const b of document.querySelectorAll(".wp-nav-item")) {
+    b.classList.toggle("active", b.dataset.nav === nav);
+  }
+}
+for (const b of document.querySelectorAll(".wp-nav-item")) {
+  b.onclick = () => {
+    const nav = b.dataset.nav;
+    document.body.classList.remove("nav-open");    // dar ekranda menuyu kapat
+    if (nav === "new") { setActiveNav("new"); window.XPanel.showBuilder(); return; }
+    if (nav === "archive") { window.XPanel.showArchive(); return; }
+    $("filter-cat").value = nav;
+    setActiveNav(nav);
+    showView("list");
+    renderList();
+  };
+}
+
+// builder.js panel gorunumlerini bu kucuk kopru uzerinden yonetir.
+window.XPanel = {
+  showList() { setActiveNav(""); showView("list"); },
+  showBuilder(slug) { setActiveNav("new"); showView("builder"); window.XBuilder?.open(slug); },
+  showBuilderArchive(id) { setActiveNav("new"); showView("builder"); window.XBuilder?.openArchive(id); },
+  showArchive() { setActiveNav("archive"); showView("archive"); window.XBuilder?.renderArchive(); },
+  toast,
+};
+
+// hamburger: dar ekranda sol menuyu ac/kapat
+$("nav-toggle").onclick = () => {
+  const open = document.body.classList.toggle("nav-open");
+  $("nav-toggle").setAttribute("aria-expanded", String(open));
+};
 
 function showView(which) {
   $("view-list").hidden = which !== "list";
   $("view-editor").hidden = which !== "editor";
+  $("view-builder").hidden = which !== "builder";
+  $("view-archive").hidden = which !== "archive";
   if (which === "list") loadList();
 }
 
@@ -279,10 +329,14 @@ for (const r of document.querySelectorAll('input[name="covertype"]')) {
 
 async function openEditor(slug) {
   current = slug;
+  $("editor-heading").textContent = slug ? "Edit post" : "New post";
   $("progress").hidden = true;
   $("cover-thumb").hidden = true;
   $("cover-status").textContent = "";
   $("cover-status").className = "status";
+  $("logo-thumb").hidden = true;
+  $("logo-status").textContent = "";
+  $("gallery-status").textContent = "";
 
   if (slug) {
     try {
@@ -293,6 +347,10 @@ async function openEditor(slug) {
       $("f-desc").value = data.description ?? "";
       $("f-date").value = String(data.date ?? "").slice(0, 10);
       $("f-cover").value = data.cover ?? "";
+      if (data.coverWidth) $("f-cover").dataset.w = data.coverWidth;
+      else delete $("f-cover").dataset.w;
+      if (data.coverHeight) $("f-cover").dataset.h = data.coverHeight;
+      else delete $("f-cover").dataset.h;
       $("f-video").value = data.video ?? "";
       $("f-body").value = body ?? "";
       const type = data.video ? "video" : data.cover ? "image" : "none";
@@ -303,20 +361,33 @@ async function openEditor(slug) {
         $("cover-thumb").src = t;
         $("cover-thumb").hidden = false;
       }
+      setSections(data.sections);
+      $("f-logo").value = data.logo ?? "";
+      const lt = mediaUrl(data.logo);
+      if (lt) { $("logo-thumb").src = lt; $("logo-thumb").hidden = false; }
+      galleryPaths = data.gallery
+        ? String(data.gallery).split(",").map((s) => s.trim()).filter(Boolean) : [];
+      drawGallery();
     } catch (e) {
       toast(e.message, "err");
       return;
     }
   } else {
-    for (const id of ["f-title", "f-slug", "f-desc", "f-cover", "f-video", "f-body"]) {
+    for (const id of ["f-title", "f-slug", "f-desc", "f-cover", "f-video", "f-body", "f-logo"]) {
       $(id).value = "";
     }
+    delete $("f-cover").dataset.w;
+    delete $("f-cover").dataset.h;
+    setSections("");
+    galleryPaths = [];
+    drawGallery();
     $("f-date").value = new Date().toISOString().slice(0, 10);
     document.querySelector('input[name="covertype"][value="image"]').checked = true;
     setCoverType("image");
   }
   updateDesc();
   updateSlugPreview();
+  updateBodyStats();
   showView("editor");
   $("f-title").focus();
 }
@@ -339,7 +410,7 @@ function updateSlugPreview() {
   const ok = isSafeSlug(s);
   $("slug-preview").textContent = s
     ? (ok ? `xr-masters.com/${underCat($("f-cat").value, s)}/`
-      : "Geçersiz slug: sadece a-z, 0-9 ve tire")
+      : "Invalid slug: only a-z, 0-9 and hyphens")
     : "";
   $("slug-preview").className = ok || !s ? "muted" : "warn";
 }
@@ -348,29 +419,171 @@ $("f-desc").oninput = updateDesc;
 function updateDesc() {
   const n = $("f-desc").value.length;
   $("desc-count").textContent = n;
-  $("desc-warn").textContent = n > 160 ? "— Google kısaltabilir" : "";
+  $("desc-warn").textContent = n > 160 ? "— Google may truncate" : "";
 }
 
-// markdown kisayollari
+// ---------- markdown editor ----------
+const body = () => $("f-body");
+
+// Secimi isaretle: **kalin**. Zaten isaretliyse kaldir (toggle).
+function wrap(mark) {
+  const ta = body();
+  const [s, e] = [ta.selectionStart, ta.selectionEnd];
+  const sel = ta.value.slice(s, e);
+  const n = mark.length;
+  if (sel.startsWith(mark) && sel.endsWith(mark) && sel.length > 2 * n) {
+    ta.setRangeText(sel.slice(n, -n), s, e, "select");
+  } else {
+    ta.setRangeText(mark + (sel || "metin") + mark, s, e,
+      sel ? "select" : "end");
+  }
+  ta.focus();
+}
+
+// Prefix SATIR BASINA gelir, imlecin durduğu yere degil: '## ' cumle
+// ortasina eklenirse markdown basligi olusmaz. Secili tum satirlara
+// uygulanir, hepsinde varsa kaldirilir.
+function prefix(mark) {
+  const ta = body();
+  const v = ta.value;
+  const from = v.lastIndexOf("\n", ta.selectionStart - 1) + 1;
+  let to = v.indexOf("\n", ta.selectionEnd);
+  if (to === -1) to = v.length;
+
+  const lines = v.slice(from, to).split("\n");
+  const all = lines.every((l) => l.startsWith(mark));
+  const out = lines
+    .map((l) => (all ? l.slice(mark.length) : mark + l.replace(/^[-*>#\d.]+\s*/, "")))
+    .join("\n");
+
+  ta.setRangeText(out, from, to, "select");
+  ta.focus();
+}
+
+function insert(text, { select } = {}) {
+  const ta = body();
+  const [s, e] = [ta.selectionStart, ta.selectionEnd];
+  ta.setRangeText(text, s, e, select ? "select" : "end");
+  ta.focus();
+}
+
+function link() {
+  const ta = body();
+  const sel = ta.value.slice(ta.selectionStart, ta.selectionEnd);
+  insert(`[${sel || "link text"}](https://)`);
+}
+
+function image() {
+  const ta = body();
+  const sel = ta.value.slice(ta.selectionStart, ta.selectionEnd);
+  // Kapak yuklediyse onun yolunu oneriyoruz; yoksa bos birakir.
+  const src = $("f-cover").value.trim();
+  insert(`![${sel || "image description"}](${src ? "/" + src.replace(/^\/+/, "") : ""})`);
+}
+
+// WordPress "Add Media": gorsel yukle ve imlecin oldugu yere markdown olarak ek.
+$("f-media-file").onchange = async () => {
+  const file = $("f-media-file").files[0];
+  if (!file) return;
+  try {
+    toast("Uploading image...");
+    const { path } = await uploadShrunk(file);
+    insert(`\n\n![image description](/${path})\n\n`);
+    updateBodyStats();
+    scheduleLive();
+    toast("Image inserted", "ok");
+  } catch (e) {
+    toast(e.message, "err");
+  }
+  $("f-media-file").value = "";
+};
+
+// Afsprakenin sabit govde iskeleti (T0): giris, video, metin, gorsel, metin.
+// Galeri ayri alandan gelir, o yuzden iskelette yok.
+const BODY_SKELETON = `## Introduction
+
+Introduction text here...
+
+https://www.youtube.com/watch?v=VIDEO_ID
+
+More text...
+
+![image description](/assets/blog/...)
+
+Closing text...
+`;
+
 for (const b of document.querySelectorAll(".md-tools button")) {
   b.onclick = (e) => {
     e.preventDefault();
-    const ta = $("f-body");
-    const mark = b.dataset.md;
-    const [s, en] = [ta.selectionStart, ta.selectionEnd];
-    const sel = ta.value.slice(s, en);
-    let out;
-    if (mark === "link") {
-      out = `[${sel || "bağlantı metni"}](https://)`;
-    } else if (mark.endsWith(" ")) {
-      out = mark + (sel || "");
-    } else {
-      out = mark + (sel || "metin") + mark;
+    if (b.dataset.wrap) return wrap(b.dataset.wrap);
+    if (b.dataset.prefix) return prefix(b.dataset.prefix);
+    if (b.dataset.md === "link") return link();
+    if (b.dataset.md === "image") return image();
+    if (b.dataset.md === "hr") return insert("\n\n---\n\n");
+    if (b.dataset.md === "media") return $("f-media-file").click();
+    if (b.dataset.md === "video") {
+      const url = prompt("YouTube veya Vimeo linki:");
+      if (url && url.trim()) { insert(`\n\n${url.trim()}\n\n`); updateBodyStats(); scheduleLive(); }
+      return;
     }
-    ta.setRangeText(out, s, en, "end");
-    ta.focus();
+    if (b.dataset.md === "skeleton") {
+      insert(BODY_SKELETON);
+      updateBodyStats();
+      scheduleLive();
+    }
   };
 }
+
+// ---------- canli onizleme (Visual) ----------
+// Gercek render.js ciktisini (tam sayfa sablonu) iframe'de gosterir; yazarken
+// /api/preview'e gonderip tazeler. Debounce: her tusa degil, durunca.
+let liveOn = false;
+let liveTimer;
+
+$("btn-live").onclick = () => {
+  liveOn = !liveOn;
+  $("live-frame").hidden = !liveOn;
+  $("btn-live").classList.toggle("btn-primary", liveOn);
+  if (liveOn) refreshLive();
+  else $("live-frame").src = "about:blank";
+};
+
+function scheduleLive() {
+  if (!liveOn) return;
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(refreshLive, 600);
+}
+
+async function refreshLive() {
+  if (!liveOn) return;
+  try {
+    const r = await api.post("/api/preview", previewPayload());
+    $("live-frame").src = `${r.href}?t=${Date.now()}`;
+  } catch { /* icerik yarim/sunucu kapali: sessizce bekle */ }
+}
+
+// Editordeki her degisiklik canli onizlemeyi (acikken) tazeler.
+$("view-editor").addEventListener("input", scheduleLive);
+$("view-editor").addEventListener("change", scheduleLive);
+
+// klavye kisayollari
+body().addEventListener("keydown", (e) => {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (k === "b") { e.preventDefault(); wrap("**"); }
+  else if (k === "i") { e.preventDefault(); wrap("*"); }
+  else if (k === "k") { e.preventDefault(); link(); }
+});
+
+// kelime / karakter sayaci
+function updateBodyStats() {
+  const v = body().value;
+  const words = v.trim() ? v.trim().split(/\s+/).length : 0;
+  $("body-words").textContent = words.toLocaleString("tr-TR");
+  $("body-chars").textContent = v.length.toLocaleString("tr-TR");
+}
+body().addEventListener("input", updateBodyStats);
 
 // ---------- gorsel: tarayicida kucult ----------
 $("f-file").onchange = async () => {
@@ -378,28 +591,111 @@ $("f-file").onchange = async () => {
   if (!file) return;
   const st = $("cover-status");
   st.className = "status";
-  st.textContent = "Küçültülüyor...";
+  st.textContent = "Resizing...";
   try {
     const { dataUrl, w, h, bytes } = await shrink(file, 1920);
-    st.textContent = `Yükleniyor... (${w}x${h}, ${(bytes / 1024).toFixed(0)} KB)`;
+    st.textContent = `Uploading... (${w}x${h}, ${(bytes / 1024).toFixed(0)} KB)`;
     const name = file.name.replace(/\.[^.]+$/, "") + ".webp";
     const r = await api.post("/api/media", { filename: name, dataUrl });
     $("f-cover").value = r.path;
+    // Olculeri sakla: og:image boyutlari ve /news/ kartindaki img
+    // width/height icin gerekli (yoksa sayfa yuklenirken ziplama olur).
+    $("f-cover").dataset.w = w;
+    $("f-cover").dataset.h = h;
     $("cover-thumb").src = `/site/${r.path}`;
     $("cover-thumb").hidden = false;
     st.className = "status ok";
-    st.textContent = `Yüklendi: ${r.path} (${(r.bytes / 1024).toFixed(0)} KB)`;
+    st.textContent = `Uploaded: ${r.path} (${(r.bytes / 1024).toFixed(0)} KB)`;
   } catch (e) {
     st.className = "status err";
     st.textContent = e.message;
   }
 };
 
+// ---------- logo + galeri: cover ile ayni kucultme + /api/media yolu ----------
+async function uploadShrunk(file) {
+  const { dataUrl, w, h, bytes } = await shrink(file, 1920);
+  const name = file.name.replace(/\.[^.]+$/, "") + ".webp";
+  const r = await api.post("/api/media", { filename: name, dataUrl });
+  return { path: r.path, w, h, bytes: r.bytes };
+}
+
+$("f-logo-file").onchange = async () => {
+  const file = $("f-logo-file").files[0];
+  if (!file) return;
+  const st = $("logo-status");
+  st.className = "status";
+  st.textContent = "Uploading...";
+  try {
+    const { path, bytes } = await uploadShrunk(file);
+    $("f-logo").value = path;
+    $("logo-thumb").src = `/site/${path}`;
+    $("logo-thumb").hidden = false;
+    st.className = "status ok";
+    st.textContent = `Uploaded: ${path} (${(bytes / 1024).toFixed(0)} KB)`;
+  } catch (e) {
+    st.className = "status err";
+    st.textContent = e.message;
+  }
+};
+
+// Galeri yollari ayri durumda tutulur; collect() virgulle birlestirir (F16).
+let galleryPaths = [];
+
+function drawGallery() {
+  const box = $("gallery-list");
+  box.textContent = "";
+  galleryPaths.forEach((p, i) => {
+    const fig = document.createElement("div");
+    fig.className = "gallery-item";
+    const img = document.createElement("img");
+    img.src = mediaUrl(p);
+    fig.append(img);
+    const rm = document.createElement("button");
+    rm.type = "button";
+    rm.className = "gallery-remove";
+    rm.textContent = "×";
+    rm.title = "Remove";
+    rm.onclick = () => { galleryPaths.splice(i, 1); drawGallery(); };
+    fig.append(rm);
+    box.append(fig);
+  });
+}
+
+$("f-gallery-file").onchange = async () => {
+  const files = [...$("f-gallery-file").files];
+  if (!files.length) return;
+  const st = $("gallery-status");
+  st.className = "status";
+  for (let i = 0; i < files.length; i++) {
+    st.textContent = `Uploading... (${i + 1}/${files.length})`;
+    try {
+      galleryPaths.push((await uploadShrunk(files[i])).path);
+      drawGallery();
+    } catch (e) {
+      st.className = "status err";
+      st.textContent = e.message;
+      return;
+    }
+  }
+  st.className = "status ok";
+  st.textContent = `${files.length} images inserted.`;
+  $("f-gallery-file").value = "";
+};
+
+// Bolum checkbox'larini virgullu stringden isaretle.
+function setSections(value) {
+  const set = new Set(String(value || "").split(",").map((s) => s.trim()));
+  for (const c of document.querySelectorAll('input[name="section"]')) {
+    c.checked = set.has(c.value);
+  }
+}
+
 // canvas ile yeniden boyutlandir + WebP'ye cevir
 function shrink(file, maxSide) {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) {
-      reject(new Error("Bu bir görsel değil. Video için YouTube/Vimeo linki kullan."));
+      reject(new Error("This is not an image. For video, use a YouTube/Vimeo link."));
       return;
     }
     const img = new Image();
@@ -422,31 +718,46 @@ function shrink(file, maxSide) {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Görsel okunamadı."));
+      reject(new Error("Could not read image."));
     };
     img.src = url;
   });
 }
 
 // ---------- form -> nesne ----------
-function collect(draft) {
-  const slug = $("f-slug").value.trim() || slugify($("f-title").value);
-  if (!$("f-title").value.trim()) throw new Error("Başlık boş olamaz");
-  if (!isSafeSlug(slug)) throw new Error("Geçersiz slug");
-  if (!$("f-body").value.trim()) throw new Error("İçerik boş olamaz");
-  if (!$("f-date").value) throw new Error("Tarih seçilmeli");
+// Dogrulamasiz ham okuma. Canli onizleme yarim formda da calismali, o yuzden
+// collect'in aksine hata ATMAZ (/api/preview eksik alanlara varsayilan verir).
+function previewPayload() {
   const type = document.querySelector('input[name="covertype"]:checked').value;
+  const cover = type === "image" ? ($("f-cover").value.trim() || null) : null;
+  const ds = $("f-cover").dataset;
+  const sections = [...document.querySelectorAll('input[name="section"]:checked')]
+    .map((c) => c.value).join(", ");
   return {
     category: $("f-cat").value,
     title: $("f-title").value.trim(),
-    slug,
+    slug: $("f-slug").value.trim(),
     description: $("f-desc").value.trim(),
     date: $("f-date").value,
-    cover: type === "image" ? ($("f-cover").value.trim() || null) : null,
+    cover,
+    coverWidth: cover && ds.w ? Number(ds.w) : null,
+    coverHeight: cover && ds.h ? Number(ds.h) : null,
     video: type === "video" ? ($("f-video").value.trim() || null) : null,
+    sections,
+    gallery: galleryPaths.join(", "),
+    logo: $("f-logo").value.trim() || null,
     body: $("f-body").value,
-    draft,
   };
+}
+
+function collect(draft) {
+  const p = previewPayload();
+  const slug = p.slug || slugify($("f-title").value);
+  if (!p.title) throw new Error("Title cannot be empty");
+  if (!isSafeSlug(slug)) throw new Error("Invalid slug");
+  if (!p.body.trim()) throw new Error("Content cannot be empty");
+  if (!p.date) throw new Error("A date must be selected");
+  return { ...p, slug, draft };
 }
 
 // ---------- onizleme ----------
@@ -480,31 +791,31 @@ async function save(draft) {
   $("result-link").hidden = true;
   box.hidden = false;
   fill.style.width = "25%";
-  text.textContent = draft ? "Taslak kaydediliyor..." : "Dosya yazılıyor...";
+  text.textContent = draft ? "Saving draft..." : "Writing file...";
   $("btn-publish").disabled = $("btn-draft").disabled = true;
 
   try {
     fill.style.width = "55%";
-    text.textContent = "Site derleniyor (build)...";
+    text.textContent = "Building the site...";
     const r = await api.post("/api/posts", post);
     fill.style.width = "100%";
-    if (!r.ok) throw new Error("Build hatası:\n" + (r.log || "").slice(-400));
+    if (!r.ok) throw new Error("Build error:\n" + (r.log || "").slice(-400));
     if (draft) {
-      text.textContent = "Taslak kaydedildi — sitede yayınlanmadı.";
-      toast("Taslak kaydedildi", "ok");
+      text.textContent = "Draft saved — not published to the site.";
+      toast("Draft saved", "ok");
     } else {
-      text.textContent = "Yayında!";
+      text.textContent = "Live!";
       const link = $("result-link");
       link.href = r.url;
       link.hidden = false;
-      toast("Gönderi yayınlandı", "ok");
+      toast("Post published", "ok");
     }
     current = post.slug;
     setTimeout(() => { if (draft) box.hidden = true; }, 2500);
   } catch (e) {
     fill.style.width = "0";
     text.textContent = e.message;
-    toast("Kaydedilemedi", "err");
+    toast("Could not save", "err");
   } finally {
     $("btn-publish").disabled = $("btn-draft").disabled = false;
   }
@@ -516,10 +827,10 @@ $("btn-publish").onclick = () => save(false);
 let pendingDelete = null;
 function askDelete(p) {
   pendingDelete = p;
-  $("confirm-title").textContent = "Gönderi silinsin mi?";
+  $("confirm-title").textContent = "Delete this post?";
   $("confirm-text").textContent =
-    `"${p.title || p.slug}" silinecek. Markdown dosyası ve üretilen sayfa kaldırılır. `
-    + "Bu işlem geri alınamaz.";
+    `"${p.title || p.slug}" will be deleted. The markdown file and generated page are removed. `
+    + "This cannot be undone.";
   $("confirm").hidden = false;
 }
 $("confirm-no").onclick = () => { $("confirm").hidden = true; pendingDelete = null; };

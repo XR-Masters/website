@@ -15,6 +15,8 @@ import { renderPost } from "./lib/render.js";
 import { TYPES, loadTypeAssets } from "./lib/content-types.js";
 import { buildLegacyIndex, sortByDateDesc } from "./lib/legacy.js";
 import { collectPages, buildSitemap, buildRobots } from "./lib/sitemap.js";
+import { prependCards, countCards } from "./lib/listing.js";
+import { fillRecent, fillFeatured, fillMedia, fillCustomerSuccess } from "./lib/homepage.js";
 
 const SITE = "site";
 const GEN = path.join("tools", "generated");
@@ -91,6 +93,45 @@ function main() {
   fs.mkdirSync(GEN, { recursive: true });
   fs.writeFileSync(path.join(GEN, "posts-index.json"),
     JSON.stringify(combined, null, 2), "utf8");
+
+  // Panelden gelen haberleri /news/ gridinin basina ekle. Aksi halde yazi
+  // kendi sayfasini alir ama listede hic gorunmez. Export'tan gelen kartlara
+  // dokunulmaz (bkz. lib/listing.js).
+  const newsPage = path.join(SITE, "news", "index.html");
+  const fresh = newEntries
+    .filter((e) => e.category === "news")
+    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+  if (fresh.length && fs.existsSync(newsPage)) {
+    const before = fs.readFileSync(newsPage, "utf8");
+    const after = prependCards(before, fresh);
+    if (after !== before) fs.writeFileSync(newsPage, after, "utf8");
+    console.log(`news grid  : ${countCards(after)} kart, `
+      + `${fresh.length} yeni basa eklendi`);
+  }
+
+  // Ana sayfa bolumleri (News widget = Most Recent, + Featured seridi).
+  // KURAL 2B/3: Most Recent, Featured/Media ETIKETLILERI icermez; Customer
+  // Success dahil. Featured = en yeni 2 featured. (Medya/CS sonraki adimda.)
+  const homePage = path.join(SITE, "index.html");
+  const recent = fresh.filter((e) =>
+    !e.sections.includes("featured") && !e.sections.includes("media"));
+  const featured = fresh.filter((e) => e.sections.includes("featured"));
+  const media = fresh.filter((e) => e.sections.includes("media"));
+  // Customer Success: tur farketmez (news/projects), logosu olanlar.
+  const custSuccess = newEntries.filter((e) =>
+    e.sections.includes("customer-success") && e.logo);
+  if ((recent.length || featured.length || media.length || custSuccess.length)
+    && fs.existsSync(homePage)) {
+    const before = fs.readFileSync(homePage, "utf8");
+    // Once Recent (orijinal News grid'ini hedefler), sonra Featured ustune, Media, logolar.
+    let after = fillRecent(before, recent);
+    after = fillFeatured(after, featured);
+    after = fillMedia(after, media);
+    after = fillCustomerSuccess(after, custSuccess);
+    if (after !== before) fs.writeFileSync(homePage, after, "utf8");
+    console.log(`home       : recent +${recent.length}, featured +${Math.min(featured.length, 2)}, `
+      + `media +${Math.min(media.length, 2)}, logos +${custSuccess.length}`);
+  }
 
   const pages = collectPages(SITE);
   fs.writeFileSync(path.join(SITE, "sitemap.xml"),

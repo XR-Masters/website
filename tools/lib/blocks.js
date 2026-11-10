@@ -1,0 +1,500 @@
+// Gorsel sayfa olusturucunun PAYLASILAN cekirdegi: JSON blok agacini GUVENLI
+// HTML'e cevirir. Hem tarayicida (canli canvas) hem sunucuda (yayinlama) AYNI
+// kod calisir -> canvas'ta gordugun, yayinlanan sayfadir.
+//
+// Guvenlik (F4): kullanicidan gelen hicbir ham HTML gecmez. Metin escape edilir;
+// sadece bizim urettigimiz etiketler cikar. Stil degerleri bir allowlist'ten
+// gecer (url(), expression, javascript: imkansiz). Link/gorsel/video URL'leri
+// sema allowlist'inden gecer; video ID'si KATI regex ile dogrulanir.
+//
+// Bagimlilik YOK: saf ES modulu, Node 18+ ve tarayicida calisir (F13).
+
+import { sanitizeRich } from "./richtext.js";
+
+// ---------- kacirma ----------
+export function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
+const ALLOWED_SCHEMES = new Set(["http", "https", "mailto", "tel"]);
+
+export function safeUrl(url) {
+  const s = String(url ?? "").trim();
+  if (!s) return null;
+  const m = SCHEME.exec(s);
+  if (m) return ALLOWED_SCHEMES.has(m[1].toLowerCase()) ? s : null;
+  if (s.startsWith("//")) return null;      // protokol-goreli //evil.com engelli
+  return s;                                  // goreli yol / capa
+}
+
+// Kok-mutlak asset yolu. http(s) ve zaten "/" ile baslayanlar oldugu gibi.
+function rootSrc(s) {
+  const v = String(s || "");
+  if (!v) return "";
+  if (/^https?:\/\//i.test(v) || v.startsWith("/")) return v;
+  return "/" + v.replace(/^(?:\.\.\/)+/, "").replace(/^\/+/, "");
+}
+
+// Gorsel src: once sema dogrula (javascript: vb. at), sonra kok-mutlak yap.
+// "assets/blog/x.webp" -> "/assets/blog/x.webp" (hem editorde hem canli sitede calisir).
+function imgSrc(s) {
+  const u = safeUrl(s);
+  return u ? rootSrc(u) : null;
+}
+
+// Kapak yoksa haber karti + og:image govdedeki ILK fotografa dussun diye:
+// bloklari (ic ice kolonlar dahil) SIRAYLA tarar, ilk gecerli gorselin src'sini
+// kapak bicimine cevirir ("assets/blog/x.webp" - bassiz; harici http oldugu gibi).
+export function firstImageSrc(blocks) {
+  for (const b of (Array.isArray(blocks) ? blocks : [])) {
+    if (!b || typeof b !== "object") continue;
+    const p = b.props || {};
+    let hit = null;
+    if (b.type === "image") hit = p.src;
+    else if (b.type === "gallery" && Array.isArray(p.images)) {
+      hit = (p.images.find((im) => im && safeUrl(im.src)) || {}).src;
+    } else if (b.type === "slider" && Array.isArray(p.slides)) {
+      hit = (p.slides.find((s) => s && safeUrl(s.src)) || {}).src;
+    } else if (b.type === "columns" && Array.isArray(p.children)) {
+      for (const col of p.children) {
+        const nested = firstImageSrc(Array.isArray(col) ? col : []);
+        if (nested) return nested;
+      }
+    }
+    const u = hit && safeUrl(hit);
+    if (u) return /^https?:\/\//i.test(u) ? u : u.replace(/^(?:\.\.\/)+/, "").replace(/^\/+/, "");
+  }
+  return null;
+}
+
+// ---------- kucuk, guvenli satir-ici bicimlendirme ----------
+// Once TUM metin escape edilir (etiket enjeksiyonu imkansiz), sonra yalnizca
+// **kalin**, *egik*, [metin](url) ve satir sonu bizim etiketlerimize cevrilir.
+export function inline(text) {
+  let t = esc(text);
+  t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, label, url) => {
+    const u = safeUrl(url);
+    if (!u) return label;
+    const ext = /^https?:/i.test(u) ? ' rel="noopener noreferrer" target="_blank"' : "";
+    return `<a href="${esc(u)}"${ext}>${label}</a>`;
+  });
+  t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  t = t.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+  return t.replace(/\r?\n/g, "<br>");
+}
+
+// Metin tasiyan bloklar: Word tarzi zengin HTML varsa (props.html) onu KATI
+// beyaz listeden gecirip bas; yoksa duz metin + mini-markdown (geriye donuk).
+function rich(p, inlineOnly) {
+  return (p.html != null && p.html !== "")
+    ? sanitizeRich(p.html, { inlineOnly })
+    : inline(p.text);
+}
+
+// ---------- video ----------
+const YT_ID = /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:embed\/|shorts\/|watch\?(?:[^"&]*[&])?v=))([A-Za-z0-9_-]{11})/i;
+const VIMEO_ID = /(?:player\.)?vimeo\.com\/(?:video\/)?(\d{6,12})/i;
+
+export function videoEmbed(url) {
+  const s = String(url ?? "");
+  let m;
+  if ((m = YT_ID.exec(s))) {
+    return { src: `https://www.youtube-nocookie.com/embed/${m[1]}`, kind: "youtube" };
+  }
+  if ((m = VIMEO_ID.exec(s))) {
+    return { src: `https://player.vimeo.com/video/${m[1]}`, kind: "vimeo" };
+  }
+  return null;
+}
+
+// ---------- stil allowlist'i ----------
+// Sadece bu anahtarlar; her biri kendi dogrulamasindan gecer. Gecersiz deger
+// sessizce atlanir. Hicbir deger url()/expression/; iceremez.
+const HEX = /^#[0-9a-fA-F]{3,8}$/;
+const NAMED = new Set(["transparent", "white", "black"]);
+const ALIGN = new Set(["left", "center", "right"]);
+
+function colorVal(v) {
+  const s = String(v).trim().toLowerCase();
+  return HEX.test(s) || NAMED.has(s) ? s : null;
+}
+function px(v, min, max) {
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n) || n < min || n > max) return null;
+  return `${n}px`;
+}
+
+// style nesnesi -> guvenli "a:b;c:d" dizesi
+export function styleString(style = {}) {
+  const out = [];
+  // val yalnizca gecerli bir deger (dogrulamadan gecmis dize) ise eklenir;
+  // eksik alanlar null/false dondurur ve atlanir.
+  const push = (prop, val) => { if (val) out.push(`${prop}:${val}`); };
+  push("color", style.color && colorVal(style.color));
+  push("background-color", style.background && colorVal(style.background));
+  if (ALIGN.has(style.align)) push("text-align", style.align);
+  push("font-size", style.fontSize != null && px(style.fontSize, 8, 200));
+  push("padding", style.padding != null && px(style.padding, 0, 400));
+  push("margin-top", style.marginTop != null && px(style.marginTop, 0, 400));
+  push("margin-bottom", style.marginBottom != null && px(style.marginBottom, 0, 400));
+  push("border-radius", style.radius != null && px(style.radius, 0, 200));
+  // tutamacla boyutlandirma: genislik/yukseklik (px)
+  push("width", style.width != null && px(style.width, 20, 2000));
+  push("height", style.height != null && px(style.height, 10, 2000));
+  push("max-width", style.maxWidth != null && px(style.maxWidth, 40, 2000));
+  if (style.maxWidth != null && px(style.maxWidth, 40, 2000)) {
+    out.push("margin-left:auto", "margin-right:auto");
+  }
+  return out.join(";");
+}
+
+const styleAttr = (style) => {
+  const s = styleString(style);
+  return s ? ` style="${s}"` : "";
+};
+
+// ---------- blok tipi tanimlari (semaya dayali ayarlar) ----------
+// fields -> ayar panelinde "Icerik" sekmesini uretir. Her tipin STIL ve
+// GELISMIS sekmeleri ortaktir (asagidaki STYLE_FIELDS).
+export const CATEGORIES = [
+  { key: "layout", label: "Layout" },
+  { key: "text", label: "Metin" },
+  { key: "media", label: "Medya" },
+  { key: "interactive", label: "Interactive" },
+];
+
+export const TYPES = {
+  heading: {
+    label: "Heading", cat: "text", icon: "H", inlineEdit: "text",
+    fields: [
+      { k: "text", type: "text", label: "Text", def: "Heading" },
+      { k: "level", type: "select", label: "Level", opts: ["h1", "h2", "h3", "h4"], def: "h2" },
+    ],
+  },
+  text: {
+    label: "Text", cat: "text", icon: "¶", inlineEdit: "text",
+    fields: [{ k: "text", type: "textarea", label: "Text", def: "Write here. **bold**, *italic*, [link](https://) are supported." }],
+  },
+  quote: {
+    label: "Quote", cat: "text", icon: "❝", inlineEdit: "text",
+    fields: [
+      { k: "text", type: "textarea", label: "Quote", def: "Quote text..." },
+      { k: "author", type: "text", label: "Kaynak", def: "" },
+    ],
+  },
+  list: {
+    label: "Liste", cat: "text", icon: "•",
+    fields: [
+      { k: "items", type: "textarea", label: "Items (one per line)", def: "First\nSecond\nThird" },
+      { k: "ordered", type: "bool", label: "Numbered", def: false },
+    ],
+  },
+  button: {
+    label: "Button", cat: "interactive", icon: "▭", inlineEdit: "text",
+    fields: [
+      { k: "text", type: "text", label: "Text", def: "Click" },
+      { k: "url", type: "text", label: "Link", def: "https://" },
+    ],
+  },
+  image: {
+    label: "Image", cat: "media", icon: "🖼",
+    fields: [
+      { k: "src", type: "media", label: "Image", def: "" },
+      { k: "alt", type: "text", label: "Alt metin", def: "" },
+      { k: "caption", type: "text", label: "Caption", def: "" },
+      { k: "url", type: "text", label: "Link (optional)", def: "" },
+    ],
+  },
+  youtube: {
+    label: "YouTube", cat: "media", icon: "▶",
+    fields: [
+      { k: "url", type: "text", label: "YouTube/Vimeo linki", def: "" },
+      { k: "ratio", type: "select", label: "Oran", opts: ["16:9", "4:3", "1:1"], def: "16:9" },
+      { k: "caption", type: "text", label: "Caption", def: "" },
+    ],
+  },
+  gallery: {
+    label: "Gallery", cat: "media", icon: "▦",
+    fields: [
+      { k: "images", type: "imagelist", label: "Images" },
+      { k: "cols", type: "select", label: "Columns", opts: ["2", "3", "4"], def: "3" },
+    ],
+  },
+  slider: {
+    label: "Slide / Carousel", cat: "media", icon: "❰❱",
+    fields: [
+      { k: "slides", type: "imagelist", label: "Slaytlar" },
+      { k: "dots", type: "bool", label: "Dot indicators", def: true },
+      { k: "autoplay", type: "bool", label: "Auto-advance (published)", def: false },
+    ],
+  },
+  callout: {
+    label: "Vurgu kutusu", cat: "interactive", icon: "❗", inlineEdit: "text",
+    fields: [
+      { k: "icon", type: "text", label: "Icon (emoji)", def: "💡" },
+      { k: "text", type: "textarea", label: "Text", def: "An important note..." },
+    ],
+  },
+  bubble: {
+    label: "Speech bubble", cat: "interactive", icon: "💬", inlineEdit: "text",
+    fields: [
+      { k: "text", type: "textarea", label: "Metin", def: "Merhaba!" },
+      { k: "shape", type: "select", label: "Shape", opts: ["round", "speech", "box"], def: "speech" },
+      { k: "tail", type: "select", label: "Tail direction", opts: ["left", "right", "bottom", "none"], def: "left" },
+    ],
+  },
+  columns: {
+    label: "Columns", cat: "layout", icon: "▦",
+    fields: [{ k: "cols", type: "select", label: "Number of columns", opts: ["2", "3"], def: "2" }],
+  },
+  divider: { label: "Divider", cat: "layout", icon: "―", fields: [] },
+  spacer: {
+    label: "Spacer", cat: "layout", icon: "↕",
+    fields: [{ k: "height", type: "number", label: "Height (px)", def: 40 }],
+  },
+};
+
+// Her blokta ortak STIL ve GELISMIS alanlari.
+export const STYLE_FIELDS = [
+  { k: "align", type: "select", label: "Hizalama", opts: ["left", "center", "right"], def: "left" },
+  { k: "color", type: "color", label: "Text color" },
+  { k: "background", type: "color", label: "Arka plan" },
+  { k: "fontSize", type: "number", label: "Font size (px)" },
+  { k: "padding", type: "number", label: "Padding (px)" },
+  { k: "radius", type: "number", label: "Corner radius (px)" },
+  { k: "width", type: "number", label: "Width (px)" },
+  { k: "height", type: "number", label: "Height (px)" },
+  { k: "maxWidth", type: "number", label: "Max width (px)" },
+];
+export const ADVANCED_FIELDS = [
+  { k: "marginTop", type: "number", label: "Margin top (px)" },
+  { k: "marginBottom", type: "number", label: "Margin bottom (px)" },
+  { k: "hideDesktop", type: "bool", label: "Hide on desktop", def: false },
+  { k: "hideMobile", type: "bool", label: "Mobilde gizle", def: false },
+];
+
+// Yeni blok: varsayilan props.
+export function defaultProps(type) {
+  const t = TYPES[type];
+  if (!t) throw new Error(`Bilinmeyen blok tipi: ${type}`);
+  const props = { style: {} };
+  for (const f of t.fields) props[f.k] = f.def ?? "";
+  // kolonlar: her kolon kendi blok dizisi (tek seviye nesting)
+  if (type === "columns") props.children = [[], []];
+  if (type === "gallery") props.images = [];
+  if (type === "slider") props.slides = [];
+  return props;
+}
+
+// ---------- blok -> HTML ----------
+function visibilityClass(style = {}) {
+  const c = [];
+  if (style.hideDesktop) c.push("xb-hide-desktop");
+  if (style.hideMobile) c.push("xb-hide-mobile");
+  return c.length ? " " + c.join(" ") : "";
+}
+
+const RATIO = { "16:9": "56.25%", "4:3": "75%", "1:1": "100%" };
+
+export function renderBlock(block, ctx) {
+  const type = block && block.type;
+  const p = (block && block.props) || {};
+  const style = p.style || {};
+  const sa = styleAttr(style);
+  const vis = visibilityClass(style);
+
+  switch (type) {
+    case "heading": {
+      const lvl = ["h1", "h2", "h3", "h4"].includes(p.level) ? p.level : "h2";
+      return `<${lvl} class="xb-heading${vis}"${sa}>${rich(p, true)}</${lvl}>`;
+    }
+    case "text":
+      return `<div class="xb-text${vis}"${sa}>${rich(p, false)}</div>`;
+    case "quote": {
+      const cite = p.author ? `<cite class="xb-quote-cite">${esc(p.author)}</cite>` : "";
+      return `<blockquote class="xb-quote${vis}"${sa}>${rich(p, true)}${cite}</blockquote>`;
+    }
+    case "list": {
+      const tag = p.ordered ? "ol" : "ul";
+      const items = String(p.items ?? "").split("\n").map((s) => s.trim()).filter(Boolean)
+        .map((s) => `<li>${inline(s)}</li>`).join("");
+      return `<${tag} class="xb-list${vis}"${sa}>${items}</${tag}>`;
+    }
+    case "button": {
+      const u = safeUrl(p.url);
+      const href = u ? ` href="${esc(u)}"` : "";
+      const ext = u && /^https?:/i.test(u) ? ' rel="noopener noreferrer" target="_blank"' : "";
+      return `<div class="xb-button-wrap${vis}"${sa}><a class="xb-button"${href}${ext}>${rich(p, true)}</a></div>`;
+    }
+    case "image": {
+      const src = imgSrc(p.src);
+      if (!src) return `<div class="xb-image xb-empty${vis}"${sa}>Select an image</div>`;
+      const cap = p.caption ? `<figcaption class="xb-caption">${esc(p.caption)}</figcaption>` : "";
+      let img = `<img class="xb-img" src="${esc(src)}" alt="${esc(p.alt)}" loading="lazy">`;
+      const u = safeUrl(p.url);
+      if (u) img = `<a href="${esc(u)}"${/^https?:/i.test(u) ? ' rel="noopener noreferrer" target="_blank"' : ""}>${img}</a>`;
+      return `<figure class="xb-image${vis}"${sa}>${img}${cap}</figure>`;
+    }
+    case "youtube": {
+      const v = videoEmbed(p.url);
+      const cap = p.caption ? `<figcaption class="xb-caption">${esc(p.caption)}</figcaption>` : "";
+      if (!v) {
+        return `<div class="xb-video xb-empty${vis}"${sa}>Enter a valid YouTube/Vimeo link</div>`;
+      }
+      const pad = RATIO[p.ratio] || RATIO["16:9"];
+      return `<figure class="xb-video${vis}"${sa}>`
+        + `<div class="xb-video-frame" style="padding-bottom:${pad}">`
+        + `<iframe src="${esc(v.src)}" title="Video" loading="lazy" `
+        + `referrerpolicy="no-referrer" allowfullscreen `
+        + `allow="autoplay; encrypted-media; picture-in-picture"></iframe></div>${cap}</figure>`;
+    }
+    case "gallery": {
+      const imgs = (Array.isArray(p.images) ? p.images : []).filter((im) => imgSrc(im && im.src));
+      if (!imgs.length) return `<div class="xb-empty${vis}"${sa}>Add images for the gallery</div>`;
+      const n = ["2", "3", "4"].includes(p.cols) ? p.cols : "3";
+      const cells = imgs.map((im) => {
+        const cap = im.caption ? `<figcaption class="xb-caption">${esc(im.caption)}</figcaption>` : "";
+        return `<figure class="xb-g-item"><img src="${esc(imgSrc(im.src))}" alt="${esc(im.alt)}" loading="lazy">${cap}</figure>`;
+      }).join("");
+      return `<div class="xb-gallery xb-gallery-${n}${vis}"${sa}>${cells}</div>`;
+    }
+    case "slider": {
+      const sl = (Array.isArray(p.slides) ? p.slides : []).filter((s) => imgSrc(s && s.src));
+      if (!sl.length) return `<div class="xb-empty${vis}"${sa}>Add images for the slider</div>`;
+      const slides = sl.map((s) => {
+        const cap = s.caption ? `<div class="xb-slide-cap">${esc(s.caption)}</div>` : "";
+        return `<div class="xb-slide"><img src="${esc(imgSrc(s.src))}" alt="${esc(s.alt)}" loading="lazy">${cap}</div>`;
+      }).join("");
+      const dots = p.dots ? `<div class="xb-dots">${sl.map(() => '<span class="xb-dot"></span>').join("")}</div>` : "";
+      return `<div class="xb-slider${vis}"${sa} data-autoplay="${p.autoplay ? 1 : 0}">`
+        + `<div class="xb-slides">${slides}</div>${dots}</div>`;
+    }
+    case "callout": {
+      const ic = p.icon ? `<span class="xb-callout-ic" aria-hidden="true">${esc(p.icon)}</span>` : "";
+      return `<div class="xb-callout${vis}"${sa}>${ic}<div class="xb-callout-body">${rich(p, false)}</div></div>`;
+    }
+    case "bubble": {
+      const shape = ["round", "speech", "box"].includes(p.shape) ? p.shape : "speech";
+      const tail = ["left", "right", "bottom", "none"].includes(p.tail) ? p.tail : "left";
+      return `<div class="xb-bubble xb-bubble--${shape} xb-tail--${tail}${vis}"${sa}>${rich(p, true)}</div>`;
+    }
+    case "columns": {
+      const children = Array.isArray(p.children) ? p.children : [];
+      const cols = children.map((col) =>
+        `<div class="xb-col">${(Array.isArray(col) ? col : []).map((b) => renderBlock(b, ctx)).join("")}</div>`).join("");
+      return `<div class="xb-cols xb-cols-${children.length || 2}${vis}"${sa}>${cols}</div>`;
+    }
+    case "postlist": {
+      const src = ["news", "projects", "all"].includes(p.source) ? p.source : "news";
+      const n = Math.max(1, Math.min(Number(p.count) || 3, 24));
+      const cols = ["1", "2", "3"].includes(p.columns) ? p.columns : "3";
+      const posts = ctx && Array.isArray(ctx.posts) ? ctx.posts : null;
+      if (!posts) return `<div class="xb-empty${vis}"${sa}>Blog/news list — shows the latest ${n} posts when published</div>`;
+      const items = posts.filter((x) => src === "all" || x.category === src).slice(0, n);
+      if (!items.length) return `<div class="xb-empty${vis}"${sa}>No posts in this source</div>`;
+      const cards = items.map((x) => {
+        const url = safeUrl(x.url || "") || "#";
+        const img = x.cover ? `<img src="${esc(rootSrc(x.cover))}" alt="" loading="lazy">` : "";
+        return `<a class="xb-post" href="${esc(url)}">${img}`
+          + `<span class="xb-post-t">${esc(x.title || x.slug || "")}</span></a>`;
+      }).join("");
+      return `<div class="xb-postlist xb-postlist-${cols}${vis}"${sa}>${cards}</div>`;
+    }
+    case "divider":
+      return `<hr class="xb-divider${vis}"${sa}>`;
+    case "spacer": {
+      const h = px(p.height, 1, 600) || "40px";
+      return `<div class="xb-spacer${vis}" style="height:${h}"></div>`;
+    }
+    default:
+      return `<div class="xb-empty">Bilinmeyen blok: ${esc(String(type))}</div>`;
+  }
+}
+
+export function renderBlocks(blocks, ctx) {
+  const list = Array.isArray(blocks) ? blocks : [];
+  return `<div class="xb-page">${list.map((b) => renderBlock(b, ctx)).join("")}</div>`;
+}
+
+// Hem canvas hem yayinlanan sayfa AYNI gorunmesi icin ortak temel stil.
+// builder.js bunu panele <style> olarak enjekte eder; yayinlamada da gomulur.
+export function pageCss({ editor = false } = {}) {
+  // Blok cercevesi (siyah border) SADECE panel editorunde gorunur; hangi blok
+  // nerede belli olsun diye. Yayinlanan sitede ve onizlemede cerceve YOK.
+  const editBorders = editor
+    ? `.xb-page>*{border:1.5px solid #1a1a1a;}.xb-page>.xb-cols{border:0;}.xb-col>*{border:1.5px solid #1a1a1a;}`
+    : "";
+  return `${editBorders}
+.xb-page{font-family:Roboto,"Helvetica Neue",Arial,sans-serif;color:#2b2f31;line-height:1.7;font-size:17px;}
+.xb-page>*{margin:0 0 20px;padding:14px 16px;}
+.xb-page>.xb-cols{border:0;padding:0;}
+.xb-col>*{padding:14px 16px;}
+.xb-page>*:first-child{margin-top:0;}
+.xb-page a:not(.xb-button):not(.xb-post){color:#0068A3;text-decoration:underline;text-underline-offset:2px;text-decoration-thickness:1px;}
+.xb-page a:not(.xb-button):not(.xb-post):hover{color:#004165;}
+.xb-heading{font-weight:700;line-height:1.18;color:#004165;margin:36px 0 20px;letter-spacing:-.01em;}
+.xb-heading:first-child{margin-top:0;}
+h1.xb-heading{font-size:38px;letter-spacing:-.02em;}
+h2.xb-heading{font-size:28px;}
+h3.xb-heading{font-size:21px;}
+h4.xb-heading{font-size:17px;letter-spacing:0;}
+.xb-text{font-size:17px;}
+.xb-quote{border-left:3px solid #FE4F06;padding:2px 0 2px 18px;font-size:20px;line-height:1.5;font-style:italic;color:#334049;}
+.xb-quote-cite{display:block;margin-top:8px;font-style:normal;font-size:14px;font-weight:600;color:#0068A3;}
+.xb-list{padding-left:22px;}.xb-list li{margin:6px 0;}
+.xb-button-wrap{display:block;}
+.xb-button{display:inline-block;background:#0068A3;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;transition:background .15s;}
+.xb-button:hover{background:#004165;}
+.xb-image{margin:0 0 20px;}.xb-img{max-width:100%;height:auto;display:block;border-radius:8px;}
+.xb-caption{font-size:13px;color:#7A7A7A;margin-top:8px;text-align:center;}
+.xb-video-frame{position:relative;width:100%;height:0;overflow:hidden;border-radius:8px;background:#000;}
+.xb-video-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+.xb-callout{display:flex;gap:12px;background:#eef7fc;border:1px solid #cfe6f4;border-left:4px solid #0068A3;border-radius:8px;padding:14px 16px;}
+.xb-callout-ic{font-size:22px;line-height:1.2;}
+.xb-bubble{display:inline-block;position:relative;background:#6EC1E4;color:#06384f;padding:14px 18px;max-width:100%;}
+.xb-bubble--round{border-radius:40px;}
+.xb-bubble--speech{border-radius:16px;}
+.xb-bubble--box{border-radius:4px;}
+.xb-bubble.xb-tail--left::after{content:"";position:absolute;left:-10px;top:16px;border:8px solid transparent;border-right-color:#6EC1E4;}
+.xb-bubble.xb-tail--right::after{content:"";position:absolute;right:-10px;top:16px;border:8px solid transparent;border-left-color:#6EC1E4;}
+.xb-bubble.xb-tail--bottom::after{content:"";position:absolute;left:24px;bottom:-10px;border:8px solid transparent;border-top-color:#6EC1E4;}
+.xb-gallery{display:grid;gap:10px;}
+.xb-gallery-2{grid-template-columns:repeat(2,1fr);}
+.xb-gallery-3{grid-template-columns:repeat(3,1fr);}
+.xb-gallery-4{grid-template-columns:repeat(4,1fr);}
+.xb-g-item{margin:0;}
+.xb-g-item img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;display:block;}
+@media(max-width:860px){.xb-gallery-3,.xb-gallery-4{grid-template-columns:repeat(2,1fr);}}
+.xb-slider{position:relative;}
+.xb-slides{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;-webkit-overflow-scrolling:touch;}
+.xb-slide{flex:0 0 100%;scroll-snap-align:center;position:relative;}
+.xb-slide img{width:100%;max-height:460px;object-fit:cover;border-radius:8px;display:block;}
+.xb-slide-cap{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.65));color:#fff;padding:12px 16px;}
+.xb-dots{display:flex;justify-content:center;gap:6px;margin-top:8px;}
+.xb-dot{width:8px;height:8px;border-radius:50%;background:#c3d2db;}
+.xb-cols{display:flex;gap:16px;}
+.xb-col{flex:1;min-width:0;}
+.xb-col>*:last-child{margin-bottom:0;}
+@media(max-width:860px){.xb-cols{flex-direction:column;}}
+.xb-postlist{display:grid;gap:16px;}
+.xb-postlist-1{grid-template-columns:1fr;}
+.xb-postlist-2{grid-template-columns:repeat(2,1fr);}
+.xb-postlist-3{grid-template-columns:repeat(3,1fr);}
+.xb-post{display:block;text-decoration:none;color:inherit;border:1px solid #e3e8eb;border-radius:8px;overflow:hidden;background:#fff;}
+.xb-post img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;}
+.xb-post-t{display:block;padding:10px 12px;font-weight:600;font-size:15px;color:#004165;}
+@media(max-width:860px){.xb-postlist-2,.xb-postlist-3{grid-template-columns:1fr;}}
+.xb-divider{border:0;border-top:1.5px solid #1a1a1a;padding:0;}
+.xb-spacer{padding:0 !important;}
+.xb-empty{border:1px dashed #b9c6ce;border-radius:8px;padding:18px;text-align:center;color:#7A7A7A;background:#f6f9fb;}
+@media(max-width:860px){h1.xb-heading{font-size:30px;}h2.xb-heading{font-size:24px;}}
+.xb-hide-desktop{display:none;}
+@media(max-width:860px){.xb-hide-desktop{display:revert;}.xb-hide-mobile{display:none;}}
+`.trim();
+}

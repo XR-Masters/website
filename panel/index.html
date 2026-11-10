@@ -1,20 +1,23 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy"
-      content="default-src 'self'; img-src 'self' data: blob:; style-src 'self';
-               script-src 'self'; frame-src 'self'; connect-src 'self'">
-<title>XR Masters - Blog Paneli</title>
+      content="default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline';
+               script-src 'self';
+               frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com;
+               connect-src 'self'">
+<title>XR Masters - Blog Panel</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<!-- giris ekrani -->
+<!-- login screen -->
 <section id="login" class="login">
   <div class="login-box">
-    <h1>XR&nbsp;Masters<span>İçerik Paneli</span></h1>
+    <img src="xrm-logo.webp" alt="XR Masters" class="login-logo" width="88" height="88">
+    <h1>Content Panel<span>Blog &amp; news management</span></h1>
     <a id="btn-login" class="btn btn-primary btn-lg" href="/api/login">
       <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"
            fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53
@@ -26,147 +29,349 @@
         .07 2.12.47.52.76 1.18.76 1.99 0 1.97-1.13 2.64-2.92 2.84.29.26.55.75.55
         1.52 0 1.09-.01 1.97-.01 2.24 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8
         c0-4.42-3.58-8-8-8Z"/></svg>
-      GitHub ile giriş yap
+      Sign in with GitHub
     </a>
     <p class="hint" id="login-hint"></p>
     <p class="hint err-text" id="login-error" hidden></p>
-    <p class="hint muted">Yalnızca yetkili GitHub hesapları girebilir.</p>
+    <p class="hint muted">Only authorized GitHub accounts can sign in.</p>
   </div>
 </section>
 
-<!-- uygulama -->
+<!-- app: WordPress-style admin layout -->
 <div id="app" hidden>
-  <header class="topbar">
-    <div class="brand">XR&nbsp;Masters <span>Blog Paneli</span></div>
+  <header class="wp-topbar">
+    <button id="nav-toggle" class="wp-icon-btn" aria-label="Toggle menu"
+      aria-expanded="true" aria-controls="sidebar">☰</button>
+    <div class="brand">
+      <img src="xrm-logo.webp" alt="XR Masters" class="brand-logo" width="34" height="34">
+      <span class="brand-sub">Content Panel</span>
+    </div>
+    <a class="wp-site-link" href="/" target="_blank" rel="noopener">View site ↗</a>
     <div class="spacer"></div>
     <span id="mode-badge" class="badge"></span>
     <div class="user">
       <div id="avatar" class="avatar"></div>
       <span id="username"></span>
     </div>
-    <button id="btn-logout" class="btn btn-ghost">Çıkış</button>
+    <button id="btn-logout" class="btn btn-ghost">Sign out</button>
   </header>
 
-  <!-- liste -->
-  <main id="view-list" class="view">
-    <div class="view-head">
-      <h2>İçerikler <span id="count" class="muted"></span></h2>
-      <div class="row">
-        <select id="filter-cat" class="input"></select>
-        <input id="search" type="search" placeholder="Başlıkta ara..." class="input">
-        <button id="btn-new" class="btn btn-primary">+ Yeni içerik</button>
-      </div>
-    </div>
-    <div id="list" class="list"></div>
-  </main>
+  <div class="wp-shell">
+    <!-- left menu: only working sections (F22) -->
+    <nav id="sidebar" class="wp-sidebar" aria-label="Main menu">
+      <button class="wp-nav-item" data-nav="news">
+        <svg class="wp-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h13v14H6a2 2 0 0 1-2-2V5Z"/><path d="M17 8h3v9a2 2 0 0 1-2 2"/><path d="M8 8h5M8 12h5M8 16h3"/></svg> Blog</button>
+      <button class="wp-nav-item" data-nav="projects">
+        <svg class="wp-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/><path d="m3 18 9 5 9-5"/></svg> Projects</button>
+      <div class="wp-nav-sep"></div>
+      <button class="wp-nav-item wp-nav-cta" data-nav="new">
+        <svg class="wp-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> New post</button>
+      <button class="wp-nav-item" data-nav="archive">
+        <svg class="wp-nav-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M5 8v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg> Archive</button>
+    </nav>
 
-  <!-- editor -->
-  <main id="view-editor" class="view" hidden>
-    <div class="view-head">
-      <button id="btn-back" class="btn btn-ghost">&larr; Listeye dön</button>
-      <div class="row">
-        <button id="btn-preview" class="btn">Önizle</button>
-        <button id="btn-draft" class="btn">Taslak kaydet</button>
-        <button id="btn-publish" class="btn btn-primary">Yayınla</button>
-      </div>
-    </div>
-
-    <div class="editor-grid">
-      <div class="col-form">
-        <label>Kategori
-          <select id="f-cat" class="input"></select>
-          <small class="muted" id="cat-hint"></small>
-        </label>
-
-        <label>Başlık
-          <input id="f-title" class="input" placeholder="İçerik başlığı">
-        </label>
-
-        <label>Slug (adres)
-          <div class="row tight">
-            <input id="f-slug" class="input mono" placeholder="otomatik-olusur">
-            <button id="btn-reslug" class="btn btn-ghost" title="Başlıktan yeniden üret">↻</button>
-          </div>
-          <small class="muted" id="slug-preview"></small>
-        </label>
-
-        <label>Açıklama
-          <textarea id="f-desc" class="input" rows="3"
-            placeholder="Liste kartında ve Google'da görünecek özet"></textarea>
-          <small class="muted"><span id="desc-count">0</span> / 160 karakter
-            <span id="desc-warn" class="warn"></span></small>
-        </label>
-
-        <label>Tarih
-          <input id="f-date" type="date" class="input">
-        </label>
-
-        <fieldset class="cover">
-          <legend>Kapak</legend>
+    <div class="wp-content">
+      <!-- list -->
+      <main id="view-list" class="view">
+        <div class="view-head">
+          <h2>Posts <span id="count" class="muted"></span></h2>
           <div class="row">
-            <label class="radio"><input type="radio" name="covertype" value="image" checked> Görsel</label>
-            <label class="radio"><input type="radio" name="covertype" value="video"> Video</label>
-            <label class="radio"><input type="radio" name="covertype" value="none"> Yok</label>
+            <select id="filter-cat" class="input"></select>
+            <input id="search" type="search" placeholder="Search titles..." class="input">
+            <button id="btn-new" class="btn btn-primary">+ New post</button>
+          </div>
+        </div>
+        <div id="list" class="list"></div>
+      </main>
+
+      <!-- archive: unfinished content (auto-saved on device) -->
+      <main id="view-archive" class="view" hidden>
+        <div class="view-head">
+          <h2>Archive <span id="arch-count" class="muted"></span></h2>
+          <button id="btn-arch-new" class="btn btn-primary">+ New post</button>
+        </div>
+        <p class="muted">Unfinished content is saved automatically on this device. It is removed once published.</p>
+        <div id="arch-list" class="list"></div>
+      </main>
+
+      <!-- editor -->
+      <main id="view-editor" class="view" hidden>
+        <div class="editor-topbar">
+          <button id="btn-back" class="btn btn-ghost">&larr; Back to list</button>
+          <h2 id="editor-heading" class="editor-heading">Post</h2>
+        </div>
+
+        <div class="editor-grid">
+          <!-- main column: title + body -->
+          <div class="col-body">
+            <label class="field-title">
+              <span class="sr-only">Title</span>
+              <input id="f-title" class="input title-input" placeholder="Post title">
+            </label>
+
+            <label>Slug (address)
+              <div class="row tight">
+                <input id="f-slug" class="input mono" placeholder="auto-generated">
+                <button id="btn-reslug" class="btn btn-ghost" title="Regenerate from title">↻</button>
+              </div>
+              <small class="muted" id="slug-preview"></small>
+            </label>
+
+            <label>Content (markdown)
+              <div class="md-tools">
+                <button data-wrap="**" title="Bold (Ctrl+B)"><b>B</b></button>
+                <button data-wrap="*" title="Italic (Ctrl+I)"><i>I</i></button>
+                <button data-wrap="`" title="Code" class="mono">&lt;/&gt;</button>
+                <span class="md-sep"></span>
+                <button data-prefix="## " title="Heading">H2</button>
+                <button data-prefix="### " title="Subheading">H3</button>
+                <button data-prefix="#### " title="Small heading">H4</button>
+                <span class="md-sep"></span>
+                <button data-prefix="- " title="Bullet list">&bull;</button>
+                <button data-prefix="1. " title="Numbered list">1.</button>
+                <button data-prefix="&gt; " title="Quote">&rdquo;</button>
+                <span class="md-sep"></span>
+                <button data-md="link" title="Link (Ctrl+K)">🔗</button>
+                <button data-md="image" title="Insert cover image">🖼</button>
+                <button data-md="hr" title="Divider">―</button>
+                <span class="md-sep"></span>
+                <button data-md="media" title="Upload &amp; insert image">⬆️</button>
+                <button data-md="video" title="Insert YouTube/Vimeo video">▶️</button>
+                <button data-md="skeleton" title="Insert post skeleton">🧱</button>
+              </div>
+            </label>
+            <div id="body-split" class="body-split">
+              <textarea id="f-body" class="input mono body" rows="22"
+                placeholder="Write in Markdown..."></textarea>
+              <iframe id="live-frame" class="live-frame" title="Live preview" hidden></iframe>
+            </div>
+            <small class="muted body-stats">
+              <span id="body-words">0</span> words &middot;
+              <span id="body-chars">0</span> characters
+            </small>
+            <input id="f-media-file" type="file" accept="image/*" hidden>
           </div>
 
-          <div id="cover-image">
-            <input id="f-file" type="file" accept="image/*" class="input">
-            <small class="muted">Yüklemeden önce tarayıcıda 1920px / WebP'ye küçültülür.</small>
-            <div id="cover-status" class="status"></div>
-            <img id="cover-thumb" class="thumb" hidden alt="">
-            <input id="f-cover" class="input mono" placeholder="assets/blog/...">
+          <!-- right rail: publish box + settings (WordPress-style) -->
+          <aside class="col-side">
+            <fieldset class="wp-box">
+              <legend>Publish</legend>
+              <div class="wp-box-actions">
+                <button id="btn-live" class="btn">Live preview</button>
+                <button id="btn-preview" class="btn">Preview</button>
+                <button id="btn-draft" class="btn">Save draft</button>
+                <button id="btn-publish" class="btn btn-primary">Publish</button>
+              </div>
+            </fieldset>
+
+            <label>Date
+              <input id="f-date" type="date" class="input">
+            </label>
+
+            <label>Type
+              <select id="f-cat" class="input"></select>
+              <small class="muted" id="cat-hint"></small>
+            </label>
+
+            <fieldset class="cover">
+              <legend>Categories</legend>
+              <div class="checks">
+                <label class="radio"><input type="checkbox" checked disabled> Blog <small class="muted">(always)</small></label>
+                <label class="radio"><input type="checkbox" name="section" value="featured"> Featured</label>
+                <label class="radio"><input type="checkbox" name="section" value="media"> Media</label>
+                <label class="radio"><input type="checkbox" name="section" value="customer-success"> Customer Success</label>
+                <label class="radio"><input type="checkbox" name="section" value="mygeoverse"> MyGeoVerse</label>
+              </div>
+              <small class="muted">Every post is a Blog post. Add any of the above (multiple allowed). Customer Success requires a logo.</small>
+            </fieldset>
+
+            <label>Description
+              <textarea id="f-desc" class="input" rows="3"
+                placeholder="Summary shown on the list card and in Google"></textarea>
+              <small class="muted"><span id="desc-count">0</span> / 160 characters
+                <span id="desc-warn" class="warn"></span></small>
+            </label>
+
+            <fieldset class="cover">
+              <legend>Cover</legend>
+              <div class="row">
+                <label class="radio"><input type="radio" name="covertype" value="image" checked> Image</label>
+                <label class="radio"><input type="radio" name="covertype" value="video"> Video</label>
+                <label class="radio"><input type="radio" name="covertype" value="none"> None</label>
+              </div>
+
+              <div id="cover-image">
+                <input id="f-file" type="file" accept="image/*" class="input">
+                <small class="muted">Resized to 1920px / WebP in the browser before upload.</small>
+                <div id="cover-status" class="status"></div>
+                <img id="cover-thumb" class="thumb" hidden alt="">
+                <input id="f-cover" class="input mono" placeholder="assets/blog/...">
+              </div>
+
+              <div id="cover-video" hidden>
+                <input id="f-video" class="input" placeholder="https://www.youtube.com/watch?v=...">
+                <small class="muted">Recommended: a YouTube or Vimeo link.</small>
+              </div>
+            </fieldset>
+
+            <fieldset class="cover">
+              <legend>Logo</legend>
+              <input id="f-logo-file" type="file" accept="image/*" class="input">
+              <small class="muted">Shown on the homepage for Projects / Customer Success.</small>
+              <div id="logo-status" class="status"></div>
+              <img id="logo-thumb" class="thumb" hidden alt="">
+              <input id="f-logo" class="input mono" placeholder="assets/blog/...">
+            </fieldset>
+
+            <fieldset class="cover">
+              <legend>Gallery</legend>
+              <input id="f-gallery-file" type="file" accept="image/*" multiple class="input">
+              <small class="muted">Multiple images; shown as a gallery at the bottom of the post.</small>
+              <div id="gallery-status" class="status"></div>
+              <div id="gallery-list" class="gallery-list"></div>
+            </fieldset>
+          </aside>
+        </div>
+
+        <div id="progress" class="progress" hidden>
+          <div class="bar"><div id="bar-fill"></div></div>
+          <p id="progress-text"></p>
+          <a id="result-link" class="btn btn-primary" hidden target="_blank" rel="noopener">Open post</a>
+        </div>
+      </main>
+
+      <!-- visual block editor (post body) -->
+      <main id="view-builder" class="view bld" hidden>
+        <div class="bld-topbar">
+          <button id="bld-back" class="btn btn-ghost">&larr; Back to panel</button>
+          <input id="bld-title" class="input bld-title" placeholder="Title">
+          <div class="bld-devices" role="group" aria-label="Device preview">
+            <button class="bld-dev active" data-dev="desktop" title="Desktop" aria-label="Desktop">🖥</button>
+            <button class="bld-dev" data-dev="tablet" title="Tablet" aria-label="Tablet">▭</button>
+            <button class="bld-dev" data-dev="mobile" title="Mobile" aria-label="Mobile">▯</button>
+          </div>
+          <div class="spacer"></div>
+          <button id="bld-undo" class="btn btn-ghost" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+          <button id="bld-redo" class="btn btn-ghost" title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
+          <button id="bld-preview" class="btn">Preview</button>
+          <button id="bld-save" class="btn">Save</button>
+          <button id="bld-publish" class="btn btn-primary">Publish</button>
+        </div>
+
+        <div class="bld-body">
+          <aside id="bld-palette" class="bld-palette" aria-label="Elements">
+            <input id="bld-search" class="input" type="search" placeholder="Search elements...">
+            <div id="bld-elements" class="bld-elements"></div>
+          </aside>
+
+          <div class="bld-canvas-wrap">
+            <!-- Word-style rich text toolbar (when a text block is selected) -->
+            <div id="bld-rtbar" class="bld-rtbar" hidden>
+              <button data-rt="bold" title="Bold (selected text)"><b>B</b></button>
+              <button data-rt="italic" title="Italic"><i>I</i></button>
+              <button data-rt="underline" title="Underline"><u>U</u></button>
+              <button data-rt="strikeThrough" title="Strikethrough"><s>S</s></button>
+              <span class="md-sep"></span>
+              <label class="bld-rt-lab" title="Text color">A<input type="color" id="bld-rt-color" value="#004165"></label>
+              <select id="bld-rt-font" class="input" aria-label="Font"></select>
+              <button data-rt="sizedown" title="Decrease size" class="bld-rt-az">A−</button>
+              <select id="bld-rt-size" class="input" aria-label="Size"></select>
+              <button data-rt="sizeup" title="Increase size" class="bld-rt-az">A+</button>
+              <span class="md-sep"></span>
+              <input id="bld-rt-link" class="input" type="text" placeholder="https://..." aria-label="Link address">
+              <button data-rt="link" title="Add link">🔗</button>
+              <button data-rt="unlink" title="Remove link">✖🔗</button>
+              <button data-rt="removeFormat" title="Clear formatting">⌫</button>
+            </div>
+            <div id="bld-canvas" class="bld-canvas" data-dev="desktop"
+              aria-label="Page canvas"></div>
           </div>
 
-          <div id="cover-video" hidden>
-            <input id="f-video" class="input" placeholder="https://www.youtube.com/watch?v=...">
-            <small class="muted">Önerilen: YouTube veya Vimeo linki.</small>
-          </div>
-        </fieldset>
-      </div>
+          <aside id="bld-settings" class="bld-settings" aria-label="Settings">
+            <div class="bld-settings-tabs">
+              <button id="bld-tab-doc" class="bld-stab active" type="button">Post</button>
+              <button id="bld-tab-el" class="bld-stab" type="button">Element</button>
+            </div>
 
-      <div class="col-body">
-        <label>İçerik (markdown)
-          <div class="md-tools">
-            <button data-md="**" title="Kalın"><b>B</b></button>
-            <button data-md="*" title="Eğik"><i>I</i></button>
-            <button data-md="## " title="Başlık">H2</button>
-            <button data-md="### " title="Alt başlık">H3</button>
-            <button data-md="- " title="Liste">&bull;</button>
-            <button data-md="link" title="Bağlantı">🔗</button>
-          </div>
-          <textarea id="f-body" class="input mono body" rows="22"
-            placeholder="Markdown ile yaz..."></textarea>
-        </label>
-      </div>
+            <!-- Post (document) settings -->
+            <div id="bld-doc" class="bld-doc">
+              <label>Type
+                <select id="bld-cat" class="input"></select>
+                <small class="muted">Blog → /slug/ · Projects → /xperiences/slug/</small>
+              </label>
+              <label>Slug (address)
+                <input id="bld-slug" class="input mono" placeholder="auto from title">
+                <small class="muted" id="bld-slug-prev"></small>
+              </label>
+              <label>Teaser
+                <textarea id="bld-teaser" class="input" rows="2"
+                  placeholder="Short summary — shown on the list card"></textarea>
+              </label>
+              <label>Date
+                <input id="bld-date" type="date" class="input">
+              </label>
+
+              <fieldset class="cover">
+                <legend>Thumbnail</legend>
+                <input id="bld-cover-file" type="file" accept="image/*" class="input">
+                <img id="bld-cover-thumb" class="thumb" hidden alt="">
+                <input id="bld-cover" class="input mono" placeholder="assets/blog/...">
+              </fieldset>
+
+              <fieldset class="cover">
+                <legend>Categories</legend>
+                <div class="checks">
+                  <label class="radio"><input type="checkbox" checked disabled> Blog <small class="muted">(always)</small></label>
+                  <label class="radio"><input type="checkbox" name="bld-section" value="featured"> Featured</label>
+                  <label class="radio"><input type="checkbox" name="bld-section" value="media"> Media</label>
+                  <label class="radio"><input type="checkbox" name="bld-section" value="customer-success"> Customer Success</label>
+                </div>
+                <small class="muted">A post can appear in multiple categories at once.</small>
+              </fieldset>
+
+              <fieldset class="cover">
+                <legend>Logo (for Customer Success)</legend>
+                <input id="bld-logo-file" type="file" accept="image/*" class="input">
+                <img id="bld-logo-thumb" class="thumb" hidden alt="">
+                <input id="bld-logo" class="input mono" placeholder="assets/blog/...">
+              </fieldset>
+
+              <label>SEO description
+                <textarea id="bld-desc" class="input" rows="2"
+                  placeholder="Google summary (falls back to teaser)"></textarea>
+              </label>
+            </div>
+
+            <!-- Selected element settings -->
+            <div id="bld-settings-body" hidden>
+              <p class="muted bld-settings-empty">Select an element on the canvas to edit it.</p>
+            </div>
+          </aside>
+        </div>
+      </main>
     </div>
-
-    <div id="progress" class="progress" hidden>
-      <div class="bar"><div id="bar-fill"></div></div>
-      <p id="progress-text"></p>
-      <a id="result-link" class="btn btn-primary" hidden target="_blank" rel="noopener">Gönderiyi aç</a>
-    </div>
-  </main>
-
-  <!-- onizleme -->
-  <div id="preview" class="modal" hidden>
-    <div class="modal-head">
-      <strong>Önizleme — gerçek site şablonu</strong>
-      <div class="row">
-        <a id="preview-open" class="btn btn-ghost" target="_blank" rel="noopener">Yeni sekmede</a>
-        <button id="preview-close" class="btn">Kapat</button>
-      </div>
-    </div>
-    <iframe id="preview-frame" title="Önizleme"></iframe>
   </div>
 
-  <!-- onay -->
+  <!-- preview -->
+  <div id="preview" class="modal" hidden>
+    <div class="modal-head">
+      <strong>Preview — real site template</strong>
+      <div class="row">
+        <a id="preview-open" class="btn btn-ghost" target="_blank" rel="noopener">New tab</a>
+        <button id="preview-close" class="btn">Close</button>
+      </div>
+    </div>
+    <iframe id="preview-frame" title="Preview"></iframe>
+  </div>
+
+  <!-- confirm -->
   <div id="confirm" class="modal small" hidden>
     <div class="confirm-box">
-      <h3 id="confirm-title">Emin misin?</h3>
+      <h3 id="confirm-title">Are you sure?</h3>
       <p id="confirm-text" class="muted"></p>
       <div class="row end">
-        <button id="confirm-no" class="btn">Vazgeç</button>
-        <button id="confirm-yes" class="btn btn-danger">Sil</button>
+        <button id="confirm-no" class="btn">Cancel</button>
+        <button id="confirm-yes" class="btn btn-danger">Delete</button>
       </div>
     </div>
   </div>
@@ -175,5 +380,6 @@
 </div>
 
 <script type="module" src="app.js"></script>
+<script type="module" src="builder.js"></script>
 </body>
 </html>
