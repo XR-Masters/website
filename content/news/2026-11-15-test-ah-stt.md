@@ -3,7 +3,7 @@ title: "TEST AH STT"
 date: 2026-11-15
 editor: blocks
 sections: "featured, customer-success"
-logo: assets/blog/2026/11/mgv_transparent_inverted_square_by_xr_masters.webp
+logo: assets/blog/2026/11/mgv_transparent_square_by_xr_masters.webp
 draft: false
 ---
 
