@@ -164,8 +164,8 @@ const styleAttr = (style) => {
 // GELISMIS sekmeleri ortaktir (asagidaki STYLE_FIELDS).
 export const CATEGORIES = [
   { key: "layout", label: "Layout" },
-  { key: "text", label: "Metin" },
-  { key: "media", label: "Medya" },
+  { key: "text", label: "Text" },
+  { key: "media", label: "Media" },
   { key: "interactive", label: "Interactive" },
 ];
 
@@ -185,11 +185,11 @@ export const TYPES = {
     label: "Quote", cat: "text", icon: "❝", inlineEdit: "text",
     fields: [
       { k: "text", type: "textarea", label: "Quote", def: "Quote text..." },
-      { k: "author", type: "text", label: "Kaynak", def: "" },
+      { k: "author", type: "text", label: "Source", def: "" },
     ],
   },
   list: {
-    label: "Liste", cat: "text", icon: "•",
+    label: "List", cat: "text", icon: "•",
     fields: [
       { k: "items", type: "textarea", label: "Items (one per line)", def: "First\nSecond\nThird" },
       { k: "ordered", type: "bool", label: "Numbered", def: false },
@@ -206,7 +206,7 @@ export const TYPES = {
     label: "Image", cat: "media", icon: "🖼",
     fields: [
       { k: "src", type: "media", label: "Image", def: "" },
-      { k: "alt", type: "text", label: "Alt metin", def: "" },
+      { k: "alt", type: "text", label: "Alt text", def: "" },
       { k: "caption", type: "text", label: "Caption", def: "" },
       { k: "url", type: "text", label: "Link (optional)", def: "" },
     ],
@@ -214,8 +214,8 @@ export const TYPES = {
   youtube: {
     label: "YouTube", cat: "media", icon: "▶",
     fields: [
-      { k: "url", type: "text", label: "YouTube/Vimeo linki", def: "" },
-      { k: "ratio", type: "select", label: "Oran", opts: ["16:9", "4:3", "1:1"], def: "16:9" },
+      { k: "url", type: "text", label: "YouTube/Vimeo link", def: "" },
+      { k: "ratio", type: "select", label: "Ratio", opts: ["16:9", "4:3", "1:1"], def: "16:9" },
       { k: "caption", type: "text", label: "Caption", def: "" },
     ],
   },
@@ -229,13 +229,13 @@ export const TYPES = {
   slider: {
     label: "Slide / Carousel", cat: "media", icon: "❰❱",
     fields: [
-      { k: "slides", type: "imagelist", label: "Slaytlar" },
+      { k: "slides", type: "imagelist", label: "Slides" },
       { k: "dots", type: "bool", label: "Dot indicators", def: true },
       { k: "autoplay", type: "bool", label: "Auto-advance (published)", def: false },
     ],
   },
   callout: {
-    label: "Vurgu kutusu", cat: "interactive", icon: "❗", inlineEdit: "text",
+    label: "Callout box", cat: "interactive", icon: "❗", inlineEdit: "text",
     fields: [
       { k: "icon", type: "text", label: "Icon (emoji)", def: "💡" },
       { k: "text", type: "textarea", label: "Text", def: "An important note..." },
@@ -244,7 +244,7 @@ export const TYPES = {
   bubble: {
     label: "Speech bubble", cat: "interactive", icon: "💬", inlineEdit: "text",
     fields: [
-      { k: "text", type: "textarea", label: "Metin", def: "Merhaba!" },
+      { k: "text", type: "textarea", label: "Text", def: "Hello!" },
       { k: "shape", type: "select", label: "Shape", opts: ["round", "speech", "box"], def: "speech" },
       { k: "tail", type: "select", label: "Tail direction", opts: ["left", "right", "bottom", "none"], def: "left" },
     ],
@@ -262,9 +262,9 @@ export const TYPES = {
 
 // Her blokta ortak STIL ve GELISMIS alanlari.
 export const STYLE_FIELDS = [
-  { k: "align", type: "select", label: "Hizalama", opts: ["left", "center", "right"], def: "left" },
+  { k: "align", type: "select", label: "Alignment", opts: ["left", "center", "right"], def: "left" },
   { k: "color", type: "color", label: "Text color" },
-  { k: "background", type: "color", label: "Arka plan" },
+  { k: "background", type: "color", label: "Background" },
   { k: "fontSize", type: "number", label: "Font size (px)" },
   { k: "padding", type: "number", label: "Padding (px)" },
   { k: "radius", type: "number", label: "Corner radius (px)" },
@@ -276,7 +276,7 @@ export const ADVANCED_FIELDS = [
   { k: "marginTop", type: "number", label: "Margin top (px)" },
   { k: "marginBottom", type: "number", label: "Margin bottom (px)" },
   { k: "hideDesktop", type: "bool", label: "Hide on desktop", def: false },
-  { k: "hideMobile", type: "bool", label: "Mobilde gizle", def: false },
+  { k: "hideMobile", type: "bool", label: "Hide on mobile", def: false },
 ];
 
 // Yeni blok: varsayilan props.
@@ -413,7 +413,7 @@ export function renderBlock(block, ctx) {
       return `<div class="xb-spacer${vis}" style="height:${h}"></div>`;
     }
     default:
-      return `<div class="xb-empty">Bilinmeyen blok: ${esc(String(type))}</div>`;
+      return `<div class="xb-empty">Unknown block: ${esc(String(type))}</div>`;
   }
 }
 

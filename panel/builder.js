@@ -280,7 +280,7 @@ function dropZone(arr, index) {
   plus.type = "button";
   plus.className = "bld-drop-plus";
   plus.textContent = "+";
-  plus.title = "Buraya element ekle";
+  plus.title = "Add element here";
   plus.onclick = (e) => {
     e.stopPropagation();
     insertAt = active ? null : { arr, index };
@@ -325,7 +325,7 @@ function blockShell(block, arr) {
       if (!colArr.length) {
         const hint = document.createElement("div");
         hint.className = "bld-col-hint";
-        hint.textContent = "Buraya element ekle";
+        hint.textContent = "Add element here";
         col.append(hint);
       }
       cols.append(col);
@@ -600,7 +600,7 @@ function colorRow(f, target) {
   clear.type = "button";
   clear.className = "btn btn-ghost bld-clear";
   clear.textContent = "✕";
-  clear.title = "Temizle";
+  clear.title = "Clear";
   clear.onclick = () => { editSnap ??= JSON.stringify(page); delete target[f.k]; commitEdit(); scheduleRender(); markDirty(); renderSettings(); };
   wrap.append(input, clear);
   return wrap;
@@ -668,7 +668,7 @@ function imageListItem(f, target, item, i) {
   const mid = document.createElement("div");
   mid.className = "bld-imgmid";
   const alt = document.createElement("input");
-  alt.className = "input"; alt.placeholder = "Alt metin"; alt.value = item.alt || "";
+  alt.className = "input"; alt.placeholder = "Alt text"; alt.value = item.alt || "";
   alt.addEventListener("focus", () => { editSnap ??= JSON.stringify(page); });
   alt.addEventListener("input", () => { item.alt = alt.value; markDirty(); });
   alt.addEventListener("change", () => { item.alt = alt.value; commitEdit(); scheduleRender(); markDirty(); });
@@ -777,7 +777,7 @@ let postCats = null;   // /api/config kategorileri (tur: news/projects), bir kez
 async function fillCats() {
   if (postCats) return;
   try { postCats = (await getJSON("/api/config")).categories || []; }
-  catch { postCats = [{ key: "news", label: "Haberler" }]; }
+  catch { postCats = [{ key: "news", label: "Blog" }]; }
   const sel = $("bld-cat");
   sel.textContent = "";
   for (const c of postCats) {
@@ -842,7 +842,7 @@ async function save(draft) {
     dirty = false;
     page.slug = post.slug;
     if (draft) {
-      toast("Taslak kaydedildi", "ok");
+      toast("Draft saved", "ok");
     } else {
       removeDraft(currentDraftId);   // yayinlandi -> cihazdaki arsiv taslagi silinir
       toast("Published", "ok");
@@ -937,7 +937,7 @@ $("bld-canvas").onclick = () => {
   const fsel = $("bld-rt-font"), ssel = $("bld-rt-size");
   fsel.append(new Option("Font", ""));
   for (const f of FONT_CHOICES) fsel.append(new Option(f, f));
-  ssel.append(new Option("Boyut", ""));
+  ssel.append(new Option("Size", ""));
   for (const s of SIZE_CHOICES) ssel.append(new Option(s + " px", String(s)));
 }
 
@@ -1104,9 +1104,9 @@ function archRow(d) {
   meta.className = "meta";
   const cat = document.createElement("span"); cat.className = "tag tag-cat"; cat.textContent = d.category || "news";
   const when = document.createElement("span");
-  when.textContent = d.updated ? new Date(d.updated).toLocaleString("tr-TR") : "";
+  when.textContent = d.updated ? new Date(d.updated).toLocaleString("en-US") : "";
   const nb = document.createElement("span");
-  nb.textContent = (Array.isArray(d.blocks) ? d.blocks.length : 0) + " blok";
+  nb.textContent = (Array.isArray(d.blocks) ? d.blocks.length : 0) + " blocks";
   meta.append(cat, when, nb);
   mid.append(h, meta);
   const actions = document.createElement("div");
@@ -1115,10 +1115,10 @@ function archRow(d) {
   open.className = "btn"; open.textContent = "Open";
   open.onclick = () => window.XPanel.showBuilderArchive(d.id);
   const del = document.createElement("button");
-  del.className = "btn btn-ghost"; del.textContent = "Sil";
+  del.className = "btn btn-ghost"; del.textContent = "Delete";
   let armed = false;
   del.onclick = () => {
-    if (!armed) { armed = true; del.textContent = "Onayla?"; del.classList.add("btn-danger"); return; }
+    if (!armed) { armed = true; del.textContent = "Confirm?"; del.classList.add("btn-danger"); return; }
     removeDraft(d.id); renderArchive();
   };
   actions.append(open, del);

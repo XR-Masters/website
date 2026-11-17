@@ -27,10 +27,10 @@ const api = {
 };
 
 async function handle(res) {
-  const data = await res.json().catch(() => ({ error: "Yanit okunamadi" }));
+  const data = await res.json().catch(() => ({ error: "Could not read response" }));
   if (res.status === 401) {
     showLogin("Session expired, please sign in again.");
-    throw new Error(data.error || "Oturum gecersiz");
+    throw new Error(data.error || "Session invalid");
   }
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
@@ -131,7 +131,7 @@ function enterApp(user) {
   const label = user.name || user.login || "?";
   $("username").textContent = label;
   $("avatar").textContent = label.charAt(0).toUpperCase();
-  $("mode-badge").textContent = "LOKAL MOD";
+  $("mode-badge").textContent = "LOCAL MODE";
   fillCategorySelects();
   updateCatHint();
   loadList();
@@ -207,7 +207,7 @@ function renderList() {
     meta.className = "meta";
     const tag = document.createElement("span");
     tag.className = `tag ${p.draft ? "tag-draft" : p.source === "new" ? "tag-new" : "tag-legacy"}`;
-    tag.textContent = p.draft ? "taslak" : p.source === "new" ? "panel" : "wordpress";
+    tag.textContent = p.draft ? "draft" : p.source === "new" ? "panel" : "wordpress";
     const catTag = document.createElement("span");
     catTag.className = "tag tag-cat";
     catTag.textContent = labelOf(p.category);
@@ -243,7 +243,7 @@ function renderList() {
       edit.onclick = () => window.XPanel.showBuilder(p.slug);
       const del = document.createElement("button");
       del.className = "btn btn-ghost";
-      del.textContent = "Sil";
+      del.textContent = "Delete";
       del.onclick = () => askDelete(p);
       actions.append(edit, del);
     } else {
@@ -434,7 +434,7 @@ function wrap(mark) {
   if (sel.startsWith(mark) && sel.endsWith(mark) && sel.length > 2 * n) {
     ta.setRangeText(sel.slice(n, -n), s, e, "select");
   } else {
-    ta.setRangeText(mark + (sel || "metin") + mark, s, e,
+    ta.setRangeText(mark + (sel || "text") + mark, s, e,
       sel ? "select" : "end");
   }
   ta.focus();
@@ -523,7 +523,7 @@ for (const b of document.querySelectorAll(".md-tools button")) {
     if (b.dataset.md === "hr") return insert("\n\n---\n\n");
     if (b.dataset.md === "media") return $("f-media-file").click();
     if (b.dataset.md === "video") {
-      const url = prompt("YouTube veya Vimeo linki:");
+      const url = prompt("YouTube or Vimeo link:");
       if (url && url.trim()) { insert(`\n\n${url.trim()}\n\n`); updateBodyStats(); scheduleLive(); }
       return;
     }
@@ -580,8 +580,8 @@ body().addEventListener("keydown", (e) => {
 function updateBodyStats() {
   const v = body().value;
   const words = v.trim() ? v.trim().split(/\s+/).length : 0;
-  $("body-words").textContent = words.toLocaleString("tr-TR");
-  $("body-chars").textContent = v.length.toLocaleString("tr-TR");
+  $("body-words").textContent = words.toLocaleString("en-US");
+  $("body-chars").textContent = v.length.toLocaleString("en-US");
 }
 body().addEventListener("input", updateBodyStats);
 
@@ -839,10 +839,10 @@ $("confirm-yes").onclick = async () => {
   $("confirm").hidden = true;
   try {
     await api.del(`/api/posts/${pendingDelete.slug}`);
-    toast("Silindi", "ok");
+    toast("Deleted", "ok");
     loadList();
   } catch (e) {
-    toast(`Silinemedi: ${e.message}`, "err");
+    toast(`Delete failed: ${e.message}`, "err");
   }
   pendingDelete = null;
 };
