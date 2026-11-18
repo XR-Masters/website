@@ -21,7 +21,7 @@ const MONTHS = ["January", "February", "March", "April", "May", "June",
 
 export function humanDate(value) {
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) throw new Error(`Gecersiz tarih: ${value}`);
+  if (Number.isNaN(d.getTime())) throw new Error(`Invalid date: ${value}`);
   return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
 }
 
@@ -81,12 +81,12 @@ const ARTICLE = /<article class="eael-grid-post[\s\S]*?<\/article>/g;
 // oldugu gibi kalir, sadece yeniler eklenir ve sondan kirpilir.
 export function prependCards(html, posts, { limit = GRID_SIZE } = {}) {
   const open = GRID_OPEN.exec(html);
-  if (!open) throw new Error("eael-post-grid kabi bulunamadi");
+  if (!open) throw new Error("eael-post-grid container not found");
   const start = open.index + open[0].length;
 
   const END = "</article>";
   const lastEnd = html.lastIndexOf(END);
-  if (lastEnd < start) throw new Error("grid icinde <article> bulunamadi");
+  if (lastEnd < start) throw new Error("no <article> found in grid");
 
   const inner = html.slice(start, lastEnd + END.length);
   const existing = inner.match(ARTICLE) ?? [];

@@ -53,7 +53,7 @@ export function loadTypeAssets(key) {
   const need = [t.template, t.seoGraph, t.meta];
   for (const f of need) {
     if (!fs.existsSync(path.join(GEN, f))) {
-      throw new Error(`${f} yok. Once calistir: node tools/extract-templates.js`);
+      throw new Error(`${f} missing. First run: node tools/extract-templates.js`);
     }
   }
   return {

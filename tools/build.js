@@ -28,7 +28,7 @@ function readMarkdown(dir) {
   for (const file of fs.readdirSync(dir).sort()) {
     if (!file.endsWith(".md")) continue;
     const m = /^(\d{4}-\d{2}-\d{2})-(.+)\.md$/.exec(file);
-    if (!m) throw new Error(`Dosya adi <yyyy-mm-dd>-<slug>.md olmali: ${dir}/${file}`);
+    if (!m) throw new Error(`Filename must be <yyyy-mm-dd>-<slug>.md: ${dir}/${file}`);
     const slug = assertSafeSlug(m[2]);
     const { data, body } = parseFrontmatter(
       fs.readFileSync(path.join(dir, file), "utf8"));

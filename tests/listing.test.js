@@ -27,7 +27,7 @@ test("humanDate: mevcut kartlardaki bicim", () => {
 });
 
 test("humanDate: gecersiz tarih hata verir", () => {
-  assert.throws(() => humanDate("abc"), /Gecersiz tarih/);
+  assert.throws(() => humanDate("abc"), /Invalid date/);
 });
 
 test("renderCard: grid'in bekledigi class'lar ve uc link", () => {
@@ -124,10 +124,10 @@ test("removeCard: olmayan slug gridi degistirmez", () => {
 
 test("prependCards: grid kabi yoksa hata", () => {
   assert.throws(() => prependCards("<div>hic grid yok</div>", [post()]),
-    /eael-post-grid kabi bulunamadi/);
+    /eael-post-grid container not found/);
 });
 
 test("prependCards: grid bos ise hata (yanlis yere yazmaktansa dur)", () => {
   assert.throws(() => prependCards(page(), [post()]),
-    /<article> bulunamadi/);
+    /no <article> found in grid/);
 });

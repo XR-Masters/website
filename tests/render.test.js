@@ -117,17 +117,17 @@ for (const key of ["news", "projects"]) {
 
   test(`[${key}] gecersiz slug reddedilir`, () => {
     assert.throws(() => renderPost(post({ slug: "../../kotu" }), assets),
-      /Gecersiz slug/);
+      /Invalid slug/);
   });
 
   test(`[${key}] bos govde reddedilir`, () => {
-    assert.throws(() => renderPost(post({ body: "   " }), assets), /govde bos/);
+    assert.throws(() => renderPost(post({ body: "   " }), assets), /body is empty/);
   });
 
   test(`[${key}] gecersiz tarih reddedilir`, () => {
     assert.throws(
       () => renderPost(post({ data: { title: "a", date: "olmayan" } }), assets),
-      /Gecersiz tarih/);
+      /Invalid date/);
   });
 
   test(`[${key}] aciklama yoksa govdeden uretilir`, () => {
@@ -270,7 +270,7 @@ test("getType: bilinmeyen kategori hata verir", () => {
 test("renderPost: type verilmezse hata", () => {
   assert.throws(
     () => renderPost(post(), { ...ASSETS.news, type: null }),
-    /kategori \(type\) gerekli/);
+    /category \(type\) is required/);
 });
 
 test("postIdFor: kararli ve eski id'lerle cakismaz", () => {
@@ -311,5 +311,5 @@ test("patchJsonLd: WebPage yoksa hata", () => {
     url: "https://x/", title: "T",
     publishedIso: "2026-01-01T00:00:00+00:00",
     modifiedIso: "2026-01-01T00:00:00+00:00",
-  }), /WebPage node'u bulunamadi/);
+  }), /WebPage node not found/);
 });

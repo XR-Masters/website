@@ -99,5 +99,5 @@ test("toPlainText: etiketsiz ozet ve kirpma", () => {
 test("renderMarkdown: tip kontrolu", () => {
   assert.equal(renderMarkdown(null), "");
   assert.equal(renderMarkdown(undefined), "");
-  assert.throws(() => renderMarkdown(42), /Markdown metni bekleniyor/);
+  assert.throws(() => renderMarkdown(42), /Expected markdown text/);
 });

@@ -87,7 +87,7 @@ function hardenHtml(html) {
 
 export function renderMarkdown(md) {
   if (md === null || md === undefined) return "";
-  if (typeof md !== "string") throw new Error("Markdown metni bekleniyor");
+  if (typeof md !== "string") throw new Error("Expected markdown text");
   return hardenHtml(instance.parse(md)).trim();
 }
 

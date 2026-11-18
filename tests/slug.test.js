@@ -63,6 +63,6 @@ test("isSafeSlug: normal slug kabul edilir", () => {
 });
 
 test("assertSafeSlug: gecersizde hata atar", () => {
-  assert.throws(() => assertSafeSlug("../x"), /Gecersiz slug/);
+  assert.throws(() => assertSafeSlug("../x"), /Invalid slug/);
   assert.equal(assertSafeSlug("iyi-slug"), "iyi-slug");
 });

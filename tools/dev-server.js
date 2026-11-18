@@ -243,8 +243,8 @@ async function api(req, res, url) {
   if (req.method === "GET" && seg[0] === "login") {
     if (!AUTH_READY) {
       return json(res, 503, {
-        error: "GitHub OAuth yapilandirilmamis. tools/lib/oauth.local.example.js "
-          + "dosyasini oauth.local.js olarak kopyalayip doldur.",
+        error: "GitHub OAuth is not configured. Copy tools/lib/oauth.local.example.js "
+          + "to oauth.local.js and fill it in.",
       });
     }
     const state = randomToken(16);
@@ -310,7 +310,7 @@ async function api(req, res, url) {
 
   // --- buradan sonrasi oturum gerektirir ---
   if (!session) {
-    return json(res, 401, { error: "Oturum gecersiz veya suresi dolmus" });
+    return json(res, 401, { error: "Session invalid or expired" });
   }
 
   if (req.method === "GET" && seg[0] === "user") {
@@ -352,12 +352,12 @@ async function api(req, res, url) {
 
   // GET /api/posts/:slug
   if (req.method === "GET" && seg[0] === "posts" && seg.length === 2) {
-    if (!isSafeSlug(seg[1])) return json(res, 400, { error: "Gecersiz slug" });
+    if (!isSafeSlug(seg[1])) return json(res, 400, { error: "Invalid slug" });
     const hit = findContent(seg[1]);
     if (!hit) {
       return json(res, 404, {
-        error: "Bu icerik WordPress'ten geliyor, markdown kaynagi yok. "
-          + "Duzenlemek icin panelden yeniden olusturulmasi gerekir.",
+        error: "This content comes from WordPress and has no markdown source. "
+          + "To edit it, recreate it from the panel.",
       });
     }
     const { data, body } = parseFrontmatter(fs.readFileSync(hit.file, "utf8"));
@@ -377,7 +377,7 @@ async function api(req, res, url) {
       cover: post.cover, video: post.video,
     }, { slug });
     if (!String(post.body || "").trim()) {
-      return json(res, 400, { error: "Govde bos olamaz" });
+      return json(res, 400, { error: "Content cannot be empty" });
     }
     // ayni slug baska kategoride varsa reddet (URL cakismasi degil ama kafa karistirir)
     const other = findContent(slug);
@@ -405,9 +405,9 @@ async function api(req, res, url) {
 
   // DELETE /api/posts/:slug
   if (req.method === "DELETE" && seg[0] === "posts" && seg.length === 2) {
-    if (!isSafeSlug(seg[1])) return json(res, 400, { error: "Gecersiz slug" });
+    if (!isSafeSlug(seg[1])) return json(res, 400, { error: "Invalid slug" });
     const hit = findContent(seg[1]);
-    if (!hit) return json(res, 404, { error: "Markdown dosyasi bulunamadi" });
+    if (!hit) return json(res, 404, { error: "Markdown file not found" });
     fs.rmSync(hit.file);
     const dir = path.join(SITE, hit.type.sitePath, seg[1]);
     const pageFile = path.join(dir, "index.html");
@@ -458,12 +458,12 @@ async function api(req, res, url) {
   if (req.method === "POST" && seg[0] === "media") {
     const { filename, dataUrl } = await jsonBody(req);
     const m = /^data:([\w/+.-]+);base64,(.+)$/s.exec(dataUrl || "");
-    if (!m) return json(res, 400, { error: "Gecersiz dataUrl" });
+    if (!m) return json(res, 400, { error: "Invalid dataUrl" });
     const buf = Buffer.from(m[2], "base64");
     if (buf.length > MAX_UPLOAD) {
       return json(res, 413, {
-        error: `Dosya ${Math.round(buf.length / 1048576)} MB. Limit 50 MB. `
-          + `Video icin YouTube/Vimeo linki kullan.`,
+        error: `File is ${Math.round(buf.length / 1048576)} MB. Limit is 50 MB. `
+          + `For video, use a YouTube/Vimeo link.`,
       });
     }
     const safe = path.basename(String(filename || "gorsel"))
@@ -489,7 +489,7 @@ async function api(req, res, url) {
     });
   }
 
-  return json(res, 404, { error: "Bilinmeyen API yolu" });
+  return json(res, 404, { error: "Unknown API path" });
 }
 
 // --- statik ---

@@ -24,7 +24,7 @@ export function postIdFor(slug) {
 
 function isoOf(value) {
   const d = new Date(value);
-  if (Number.isNaN(d.getTime())) throw new Error(`Gecersiz tarih: ${value}`);
+  if (Number.isNaN(d.getTime())) throw new Error(`Invalid date: ${value}`);
   return d.toISOString().replace(/\.\d{3}Z$/, "+00:00");
 }
 
@@ -83,7 +83,7 @@ export function patchJsonLd(graph, post) {
       node.author.name = post.author;
     }
   }
-  if (!patched) throw new Error("JSON-LD icinde WebPage node'u bulunamadi");
+  if (!patched) throw new Error("WebPage node not found in JSON-LD");
   return out;
 }
 
@@ -158,8 +158,8 @@ function embedVideoLinks(html) {
 
 export function renderPost({ data, body, slug }, { template, seoGraph, meta, type }) {
   assertSafeSlug(slug);
-  if (!template) throw new Error("template gerekli");
-  if (!type) throw new Error("kategori (type) gerekli");
+  if (!template) throw new Error("template is required");
+  if (!type) throw new Error("category (type) is required");
 
   const title = String(data.title);
   const publishedIso = isoOf(data.date);
@@ -179,7 +179,7 @@ export function renderPost({ data, body, slug }, { template, seoGraph, meta, typ
   let contentHtml;
   if (data.editor === "blocks") {
     let parsed;
-    try { parsed = JSON.parse(body); } catch { throw new Error(`${slug}: bloklar gecerli JSON degil`); }
+    try { parsed = JSON.parse(body); } catch { throw new Error(`${slug}: blocks are not valid JSON`); }
     const blocks = Array.isArray(parsed) ? parsed : (parsed && parsed.blocks) || [];
     // Kapak (thumbnail) yoksa govdedeki ILK fotografa dus: haber karti + og:image
     // onu kullanir. Ayri thumbnail yuklendiyse ona dokunmayiz.
@@ -188,13 +188,13 @@ export function renderPost({ data, body, slug }, { template, seoGraph, meta, typ
     contentHtml = `<style>${pageCss()}</style>` + renderBlocks(blocks);
   } else {
     contentHtml = renderMarkdown(body);
-    if (!contentHtml.trim()) throw new Error(`${slug}: govde bos`);
+    if (!contentHtml.trim()) throw new Error(`${slug}: body is empty`);
     // T3: govdedeki YouTube/Vimeo linkini oynaticiya cevir (metnin arasinda).
     contentHtml = embedVideoLinks(contentHtml);
     // T2: galeri govdeden SONRA, en altta.
     contentHtml += renderGallery(data.gallery);
   }
-  if (!contentHtml.trim()) throw new Error(`${slug}: govde bos`);
+  if (!contentHtml.trim()) throw new Error(`${slug}: body is empty`);
 
   const jsonld = patchJsonLd(seoGraph, {
     url, title, description, publishedIso, modifiedIso,

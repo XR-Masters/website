@@ -16,7 +16,7 @@ function coerce(raw) {
 }
 
 export function parseFrontmatter(text) {
-  if (typeof text !== "string") throw new Error("Metin bekleniyor");
+  if (typeof text !== "string") throw new Error("Expected text");
   // Windows editorleri (ve PowerShell'in Set-Content'i) dosya basina BOM
   // yazar. BOM kalirsa '---' satirbasinda sayilmaz, frontmatter hic
   // gorulmez ve hata "'title' zorunlu" diye yanlis yerden gelir.
@@ -29,9 +29,9 @@ export function parseFrontmatter(text) {
   for (const line of lines) {
     if (!line.trim() || /^\s*#/.test(line)) continue;
     const i = line.indexOf(":");
-    if (i === -1) throw new Error(`Frontmatter satiri gecersiz: ${line}`);
+    if (i === -1) throw new Error(`Invalid frontmatter line: ${line}`);
     const key = line.slice(0, i).trim();
-    if (!key) throw new Error(`Frontmatter anahtari bos: ${line}`);
+    if (!key) throw new Error(`Empty frontmatter key: ${line}`);
     data[key] = coerce(line.slice(i + 1));
   }
   return { data, body: text.slice(m[0].length), hasFrontmatter: true };
@@ -43,20 +43,20 @@ export function validatePost(data, { slug } = {}) {
   const errors = [];
   for (const k of REQUIRED) {
     if (data[k] === undefined || data[k] === null || data[k] === "") {
-      errors.push(`'${k}' zorunlu`);
+      errors.push(`'${k}' is required`);
     }
   }
   if (data.date && !/^\d{4}-\d{2}-\d{2}([T ]|$)/.test(String(data.date))) {
-    errors.push(`'date' YYYY-MM-DD olmali, gelen: ${data.date}`);
+    errors.push(`'date' must be YYYY-MM-DD, got: ${data.date}`);
   }
   if (data.date && Number.isNaN(Date.parse(String(data.date)))) {
-    errors.push(`'date' gecerli bir tarih degil: ${data.date}`);
+    errors.push(`'date' is not a valid date: ${data.date}`);
   }
   if (data.cover && data.video) {
-    errors.push("'cover' ve 'video' ayni anda olamaz");
+    errors.push("'cover' and 'video' cannot be set at the same time");
   }
   if (data.description && String(data.description).length > 300) {
-    errors.push(`'description' 300 karakteri gecmemeli (${data.description.length})`);
+    errors.push(`'description' must not exceed 300 characters (${data.description.length})`);
   }
   if (errors.length) {
     throw new Error(`${slug ? slug + ": " : ""}${errors.join("; ")}`);

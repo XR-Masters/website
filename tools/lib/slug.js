@@ -29,6 +29,6 @@ export function isSafeSlug(slug) {
 }
 
 export function assertSafeSlug(slug) {
-  if (!isSafeSlug(slug)) throw new Error(`Gecersiz slug: ${JSON.stringify(slug)}`);
+  if (!isSafeSlug(slug)) throw new Error(`Invalid slug: ${JSON.stringify(slug)}`);
   return slug;
 }
