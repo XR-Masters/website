@@ -247,12 +247,17 @@ function renderList() {
       del.onclick = () => askDelete(p);
       actions.append(edit, del);
     } else {
+      // Eski (WordPress) postlar editlenemez ama SILINEBILIR.
       const note = document.createElement("span");
       note.className = "muted";
       note.style.fontSize = "12px";
       note.textContent = "not editable";
       note.title = "Post from WordPress; no markdown source.";
-      actions.append(note);
+      const del = document.createElement("button");
+      del.className = "btn btn-ghost";
+      del.textContent = "Delete";
+      del.onclick = () => askDelete(p);
+      actions.append(note, del);
     }
 
     row.append(thumb, mid, actions);

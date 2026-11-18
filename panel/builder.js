@@ -367,6 +367,17 @@ function blockShell(block, arr) {
       el.setAttribute("contenteditable", "true");
       el.classList.add("bld-editable");
       el.onkeydown = (e) => e.stopPropagation();   // kisayollar tuvale kacmasin
+      // Metin SECIMI duzeltmesi: editable icinde mouse ile basinca blok
+      // suruklemesini kapat, yoksa yaziyi secmek yerine tum blok suruklenir.
+      // Mouse birakilinca surukleme geri acilir (handle/kenardan tasima calisir).
+      el.addEventListener("mousedown", () => {
+        w.draggable = false;
+        const restore = () => {
+          w.draggable = true;
+          document.removeEventListener("mouseup", restore);
+        };
+        document.addEventListener("mouseup", restore);
+      });
       // Word tarzi bicimlendirme: innerHTML'i KATI beyaz listeden gecirip
       // props.html olarak sakla. text/callout blok etiketi (p/liste) de alabilir.
       const inlineOnly = !(block.type === "text" || block.type === "callout");
@@ -900,7 +911,10 @@ function markDirty() {
   dirty = true;
   clearTimeout(markDirty._t);
   markDirty._t = setTimeout(() => {
-    // her degisiklikte cihaza otomatik kaydet (bos icerigi arsivleme)
+    // MEVCUT postu duzenlerken cihaza OTOMATIK KAYIT YOK: Publish etmeden
+    // cikarsan degisiklikler kaybolur ve post eski haline doner (istenen).
+    // Otomatik arsivleme sadece YENI, henuz yayinlanmamis icerik icindir.
+    if (openedSlug) return;
     if (!currentDraftId) return;
     if (!$("bld-title").value.trim() && !page.blocks.length) return;
     try { localStorage.setItem(ARCH + currentDraftId, JSON.stringify(snapshotDraft())); }
@@ -922,7 +936,6 @@ for (const b of document.querySelectorAll(".bld-dev")) {
 
 // ---------- topbar + kisayollar ----------
 $("bld-back").onclick = () => window.XPanel?.showList();
-$("bld-save").onclick = () => save(true);
 $("bld-publish").onclick = () => save(false);
 $("bld-preview").onclick = previewPost;
 $("bld-undo").onclick = undo;
@@ -1024,6 +1037,17 @@ for (const btn of document.querySelectorAll("#bld-rtbar [data-rt]")) {
     commitRich();
   };
 }
+// Link alaninda Enter = link ikonuna basmak (URL yapistirip Enter'la ekle).
+$("bld-rt-link").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  restoreRange();
+  const u = $("bld-rt-link").value.trim();
+  if (u) document.execCommand("createLink", false, u);
+  $("bld-rt-link").value = "";
+  commitRich();
+});
+
 // renk/font/boyut form kontrolleri: odak alir, saklanan secime uygular
 $("bld-rt-color").oninput = () => { restoreRange(); wrapStyle({ color: $("bld-rt-color").value }); };
 $("bld-rt-font").onchange = () => {

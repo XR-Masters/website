@@ -219,6 +219,36 @@ function removeGenerated(type, slug) {
   }
 }
 
+// Eski (WordPress export) postu sil: markdown kaynagi YOK, sadece statik sayfa.
+// Guvenlik: yalnizca GERCEK blog/proje postunu sil. news'te body class
+// 'single-post' sart -> about-us gibi normal sayfalar korunur. projects zaten
+// xperiences/ altinda (baska sey yok). xrm-schema'li sayfa buraya gelmez
+// (onu findContent markdown'dan bulur).
+function deleteLegacy(slug) {
+  for (const t of Object.values(TYPES)) {
+    const dir = path.join(SITE, t.sitePath, slug);
+    const pageFile = path.join(dir, "index.html");
+    if (!fs.existsSync(pageFile)) continue;
+    const html = fs.readFileSync(pageFile, "utf8");
+    if (html.includes('class="xrm-schema"')) continue;
+    if (t.legacyMarker) {
+      const bc = /<body class="([^"]*)"/.exec(html);
+      if (!bc || !bc[1].split(/\s+/).includes(t.legacyMarker)) continue;
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+    if (t.key === "news") {
+      const newsPage = path.join(SITE, "news", "index.html");
+      if (fs.existsSync(newsPage)) {
+        const before = fs.readFileSync(newsPage, "utf8");
+        const after = removeCard(before, slug);
+        if (after !== before) fs.writeFileSync(newsPage, after, "utf8");
+      }
+    }
+    return { type: t, pageFile };
+  }
+  return null;
+}
+
 function frontmatterOf(post) {
   const q = (v) => `"${String(v).replace(/"/g, '\\"')}"`;
   const lines = [`title: ${q(post.title)}`, `date: ${post.date}`];
@@ -437,12 +467,19 @@ async function api(req, res, url) {
   if (req.method === "DELETE" && seg[0] === "posts" && seg.length === 2) {
     if (!isSafeSlug(seg[1])) return json(res, 400, { error: "Invalid slug" });
     const hit = findContent(seg[1]);
-    if (!hit) return json(res, 404, { error: "Markdown file not found" });
-    fs.rmSync(hit.file);
-    removeGenerated(hit.type, seg[1]);          // site sayfasi + /news/ grid karti
+    if (hit) {
+      // Panelden uretilmis (markdown kaynakli) post.
+      fs.rmSync(hit.file);
+      removeGenerated(hit.type, seg[1]);        // site sayfasi + /news/ grid karti
+      const build = await runBuild();
+      const synced = await persistRemove(hit.file, `panel: sil ${seg[1]}`);
+      return json(res, 200, { ok: build.ok, log: build.log, synced });
+    }
+    // Markdown kaynagi yok -> eski (WordPress) post: statik sayfayi kaldir.
+    const legacy = deleteLegacy(seg[1]);
+    if (!legacy) return json(res, 404, { error: "Post not found" });
     const build = await runBuild();
-    // Kalicilik: kaynak markdown'i GitHub'dan da sil.
-    const synced = await persistRemove(hit.file, `panel: sil ${seg[1]}`);
+    const synced = await persistRemove(legacy.pageFile, `panel: sil (legacy) ${seg[1]}`);
     return json(res, 200, { ok: build.ok, log: build.log, synced });
   }
 
@@ -455,13 +492,13 @@ async function api(req, res, url) {
       const { html } = renderPost({
         slug,
         data: {
-          title: post.title || "(baslik yok)", date: post.date || "2026-01-01",
+          title: post.title || "(no title)", date: post.date || "2026-01-01",
           description: post.description, teaser: post.teaser,
           cover: post.cover, video: post.video,
           author: post.author, sections: post.sections, gallery: post.gallery,
           logo: post.logo, editor: post.editor,
         },
-        body: post.body || "(govde yok)",
+        body: post.body || "(no body)",
       }, loadTypeAssets(type.key));
       previews.set(type.key, html);
       return json(res, 200, {
