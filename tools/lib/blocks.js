@@ -251,7 +251,7 @@ export const TYPES = {
   },
   columns: {
     label: "Columns", cat: "layout", icon: "▦",
-    fields: [{ k: "cols", type: "select", label: "Number of columns", opts: ["2", "3"], def: "2" }],
+    fields: [{ k: "cols", type: "select", label: "Number of columns", opts: ["1", "2", "3", "4", "5"], def: "2" }],
   },
   divider: { label: "Divider", cat: "layout", icon: "―", fields: [] },
   spacer: {
