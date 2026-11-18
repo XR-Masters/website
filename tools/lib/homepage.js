@@ -58,22 +58,18 @@ function matchingDivEnd(html, openEnd) {
 
 const RECENT_OPEN = /<div class="wpcap-grid-container[^"]*">/;
 
-// Most Recent: News grid'inin icine yeni kartlari basa ekle, legacy'yi koru,
-// limit'e kirp. (div-eslesmeli: grid'in dogru sinirini bulur.)
+// Post grid: News grid'ini indeksten TAMAMEN yeniden uretir (en yeni N, tarihe
+// gore). `posts` cagiran tarafca zaten tarihe gore sirali ve kirpilmis gelir;
+// grid icerigi birebir onlarla degistirilir. Boylece her yayinlamada grid
+// her zaman en yeni N postu gosterir (yayin sirasindan bagimsiz). Eski
+// WordPress kartlari bu uretilen kartlarla degisir (istenen davranis).
 export function fillRecent(html, posts, { limit = 9 } = {}) {
   const m = RECENT_OPEN.exec(html);
   if (!m) return html;
   const innerStart = m.index + m[0].length;
   const closeIdx = matchingDivEnd(html, innerStart);
   if (closeIdx === -1) return html;
-  const inner = html.slice(innerStart, closeIdx);
-  const existing = [...inner.matchAll(/<article[\s\S]*?<\/article>/g)].map((x) => x[0]);
-  const ids = new Set(posts.map((p) => `post-${p.id ?? 0}`));
-  const kept = existing.filter((a) => {
-    const id = /id="(post-\d+)"/.exec(a);
-    return !id || !ids.has(id[1]);
-  });
-  const cards = [...posts.map(renderHomeCard), ...kept].slice(0, limit);
+  const cards = posts.slice(0, limit).map(renderHomeCard);
   return `${html.slice(0, innerStart)}\n${cards.join("\n")}\n${html.slice(closeIdx)}`;
 }
 
@@ -81,16 +77,30 @@ export function fillRecent(html, posts, { limit = 9 } = {}) {
 // bir "Featured" seridi ekler (en yeni 2). TEMIZ homepage'de bu kap yok, build
 // her seferinde temizden basladigi icin cogalmaz.
 const FEATURED_ANCHOR = '<div class="elementor-element elementor-element-9543c66';
+// Enjekte edilen Featured seridi bu iki isaret arasinda durur; her build once
+// eskisini SILER sonra yenisini koyar -> idempotent (lokalde tekrar tekrar
+// build cogaltmaz) ve son featured kalmazsa serit tamamen kalkar.
+const FEATURED_MARK = "<!--xrm-featured-->";
+const FEATURED_MARK_END = "<!--/xrm-featured-->";
+
+function stripFeatured(html) {
+  const a = html.indexOf(FEATURED_MARK);
+  if (a === -1) return html;
+  const b = html.indexOf(FEATURED_MARK_END, a);
+  if (b === -1) return html;
+  return html.slice(0, a) + html.slice(b + FEATURED_MARK_END.length);
+}
 
 export function fillFeatured(html, posts, { limit = 2 } = {}) {
-  if (!posts.length) return html;
+  html = stripFeatured(html);                 // onceki seridi her zaman kaldir
+  if (!posts.length) return html;             // featured yoksa serit de yok
   const i = html.indexOf(FEATURED_ANCHOR);
   if (i === -1) return html;
   const cards = posts.slice(0, limit).map(renderHomeCard).join("\n");
-  const block = `<div class="elementor-element elementor-widget elementor-widget-heading" data-xrm="featured-head"><div class="elementor-widget-container"><h4 class="elementor-heading-title elementor-size-default">Featured</h4></div></div>
+  const block = `${FEATURED_MARK}<div class="elementor-element elementor-widget elementor-widget-heading" data-xrm="featured-head"><div class="elementor-widget-container"><h4 class="elementor-heading-title elementor-size-default">Featured</h4></div></div>
 <div class="elementor-element elementor-grid-2 elementor-grid-tablet-2 elementor-grid-mobile-1 elementor-widget elementor-widget-elementor-blog-posts" data-xrm="featured" data-widget_type="elementor-blog-posts.default"><div class="elementor-widget-container"><div class="wpcap-grid"><div class="wpcap-grid-container elementor-grid wpcap-grid-desktop-2 wpcap-grid-tablet-2 wpcap-grid-mobile-1 xrm-featured-grid">
 ${cards}
-</div></div></div></div>
+</div></div></div></div>${FEATURED_MARK_END}
 `;
   return html.slice(0, i) + block + html.slice(i);
 }

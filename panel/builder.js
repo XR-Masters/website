@@ -1046,7 +1046,8 @@ function clearDoc() {
   for (const id of ["bld-title", "bld-slug", "bld-teaser", "bld-desc", "bld-cover", "bld-logo"]) $(id).value = "";
   $("bld-cover-thumb").hidden = true;
   $("bld-logo-thumb").hidden = true;
-  for (const c of document.querySelectorAll('input[name="bld-section"]')) c.checked = false;
+  // Yeni postta "Post" varsayilan isaretli (ana News listesi); digerleri kapali.
+  for (const c of document.querySelectorAll('input[name="bld-section"]')) c.checked = c.value === "post";
   $("bld-date").value = new Date().toISOString().slice(0, 10);
 }
 

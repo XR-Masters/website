@@ -42,19 +42,21 @@ test("renderHomeCard: baslik/ozet XSS kacirilir", () => {
   assert.match(html, /a &amp; b/);
 });
 
-test("prependHomeRecent: yeni kart basa gelir, legacy korunur", () => {
-  const out = fillRecent(page(legacy(11, "eski", "Eski")), [post()]);
-  // yeni kart, eski karttan ONCE gelmeli (News widget'in basinda)
-  assert.ok(out.indexOf('/yeni/') < out.indexOf('/eski/'), "yeni once gelmeli");
-  assert.ok(out.includes("Eski"), "legacy kart durmali");
+test("fillRecent: grid'i verilen postlarla TAMAMEN degistirir, sira korunur", () => {
+  const out = fillRecent(page(legacy(11, "eski", "Eski")),
+    [post({ slug: "a", id: 1, url: "/a/" }), post({ slug: "b", id: 2, url: "/b/" })]);
+  assert.ok(out.includes("/a/") && out.includes("/b/"), "verilen postlar render edilir");
+  assert.ok(!out.includes("/eski/") && !out.includes("Eski"), "eski grid icerigi degisir");
+  assert.ok(out.indexOf("/a/") < out.indexOf("/b/"), "sira korunur (en yeni once)");
 });
 
-test("prependHomeRecent: limit asilinca en eski duser", () => {
-  const olds = Array.from({ length: 9 }, (_, i) => legacy(100 + i, `eski-${i}`, `E${i}`));
-  const out = fillRecent(page(...olds), [post()], { limit: 9 });
-  assert.equal((out.match(/class="wpcap-post/g) || []).length, 9);
-  assert.ok(out.includes("/yeni/"));
-  assert.ok(!out.includes("/eski-8/"), "en eski dusmeli");
+test("fillRecent: en fazla limit kadar kart (en yeni N)", () => {
+  const posts = Array.from({ length: 12 }, (_, i) =>
+    post({ slug: `p${i}`, id: 100 + i, url: `/p${i}/` }));
+  const out = fillRecent(page(), posts, { limit: 9 });
+  assert.equal((out.match(/class="wpcap-post/g) || []).length, 9, "sadece 9");
+  assert.ok(out.includes("/p0/") && out.includes("/p8/"));
+  assert.ok(!out.includes("/p9/"), "limit sonrasi girmez");
 });
 
 test("prependHomeRecent: ayni post tekrar eklenince cogalmaz", () => {

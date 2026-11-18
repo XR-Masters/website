@@ -109,28 +109,33 @@ function main() {
       + `${fresh.length} yeni basa eklendi`);
   }
 
-  // Ana sayfa bolumleri (News widget = Most Recent, + Featured seridi).
-  // KURAL 2B/3: Most Recent, Featured/Media ETIKETLILERI icermez; Customer
-  // Success dahil. Featured = en yeni 2 featured. (Medya/CS sonraki adimda.)
-  const homePage = path.join(SITE, "index.html");
-  const recent = fresh.filter((e) =>
-    !e.sections.includes("featured") && !e.sections.includes("media"));
-  const featured = fresh.filter((e) => e.sections.includes("featured"));
-  const media = fresh.filter((e) => e.sections.includes("media"));
+  // Homepage sections are rebuilt from the FULL index by date (newest first);
+  // `combined` is already sortByDateDesc. This makes each section show exactly
+  // the newest N regardless of publish order:
+  //   Featured strip = newest 2 tagged "featured"
+  //   Post grid      = newest 9 (tagged "post", plus legacy news which is post)
+  //   Media          = newest 2 tagged "media" (prepended to existing cards)
+  // A post tagged both post+featured shows in BOTH the grid and the strip.
+  const hasSec = (e, s) => Array.isArray(e.sections) && e.sections.includes(s);
+  const newsAll = combined.filter((e) => e.category === "news");
+  const featured = newsAll.filter((e) => hasSec(e, "featured")).slice(0, 2);
+  const media = newsAll.filter((e) => hasSec(e, "media")).slice(0, 2);
+  const postGrid = newsAll
+    .filter((e) => e.source === "legacy" || hasSec(e, "post")).slice(0, 9);
   // Customer Success: tur farketmez (news/projects), logosu olanlar.
   const custSuccess = newEntries.filter((e) =>
     e.sections.includes("customer-success") && e.logo);
-  if ((recent.length || featured.length || media.length || custSuccess.length)
-    && fs.existsSync(homePage)) {
+  const homePage = path.join(SITE, "index.html");
+  if (fs.existsSync(homePage)) {
     const before = fs.readFileSync(homePage, "utf8");
-    // Once Recent (orijinal News grid'ini hedefler), sonra Featured ustune, Media, logolar.
-    let after = fillRecent(before, recent);
+    // Once Post grid (orijinal News grid'ini hedefler), sonra Featured ustune, Media, logolar.
+    let after = fillRecent(before, postGrid);
     after = fillFeatured(after, featured);
     after = fillMedia(after, media);
     after = fillCustomerSuccess(after, custSuccess);
     if (after !== before) fs.writeFileSync(homePage, after, "utf8");
-    console.log(`home       : recent +${recent.length}, featured +${Math.min(featured.length, 2)}, `
-      + `media +${Math.min(media.length, 2)}, logos +${custSuccess.length}`);
+    console.log(`home       : featured ${featured.length}, post ${postGrid.length}, `
+      + `media ${media.length}, logos ${custSuccess.length}`);
   }
 
   const pages = collectPages(SITE);
