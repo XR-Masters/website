@@ -199,6 +199,26 @@ function findContent(slug) {
   return null;
 }
 
+// Bir postun URETILMIS ciktisini kaldirir: site sayfasi (xrm-schema'li, yani
+// bizim urettigimiz) + /news/ grid karti. Hem silmede hem tasima/yeniden
+// adlandirmada eski ciktinin ortada kalmamasi (orphan sayfa/kart) icin.
+function removeGenerated(type, slug) {
+  const dir = path.join(SITE, type.sitePath, slug);
+  const pageFile = path.join(dir, "index.html");
+  if (fs.existsSync(pageFile)
+    && fs.readFileSync(pageFile, "utf8").includes('class="xrm-schema"')) {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  if (type.key === "news") {
+    const newsPage = path.join(SITE, "news", "index.html");
+    if (fs.existsSync(newsPage)) {
+      const before = fs.readFileSync(newsPage, "utf8");
+      const after = removeCard(before, slug);
+      if (after !== before) fs.writeFileSync(newsPage, after, "utf8");
+    }
+  }
+}
+
 function frontmatterOf(post) {
   const q = (v) => `"${String(v).replace(/"/g, '\\"')}"`;
   const lines = [`title: ${q(post.title)}`, `date: ${post.date}`];
@@ -379,23 +399,33 @@ async function api(req, res, url) {
     if (!String(post.body || "").trim()) {
       return json(res, 400, { error: "Content cannot be empty" });
     }
-    // ayni slug baska kategoride varsa reddet (URL cakismasi degil ama kafa karistirir)
-    const other = findContent(slug);
-    if (other && other.type.key !== type.key) {
+    // Duzenlenen postu bul: panel editore acarken originalSlug yollar; boylece
+    // slug VEYA kategori degisse bile ESKI kaydi buluruz ve tasiriz (yoksa yeni
+    // kayit acilir, eskisi oldugu yerde kalir = duplikat).
+    const origSlug = post.originalSlug && isSafeSlug(String(post.originalSlug))
+      ? String(post.originalSlug) : slug;
+    const existing = findContent(origSlug);
+    // Hedef slug'i BASKA bir post kullaniyorsa reddet (gercek cakisma).
+    const clash = findContent(slug);
+    if (clash && (!existing || clash.file !== existing.file)) {
       return json(res, 409, {
-        error: `Bu slug '${other.type.label}' kategorisinde zaten var.`,
+        error: `Slug "${slug}" is already used by another post (${clash.type.label}).`,
       });
     }
     const dir = path.join(ROOT, type.contentDir);
     fs.mkdirSync(dir, { recursive: true });
-    const old = mdFileFor(type.key, slug);
     const target = path.join(dir, `${post.date}-${slug}.md`);
     const md = frontmatterOf(post);
-    if (old && old !== target) fs.rmSync(old);
+    // Tasima/yeniden adlandirma: eski kaynak + URETILMIS ciktiyi (sayfa + kart) kaldir.
+    const moved = existing && existing.file !== target;
+    if (moved) {
+      fs.rmSync(existing.file);
+      removeGenerated(existing.type, origSlug);
+    }
     fs.writeFileSync(target, md, "utf8");
     const build = await runBuild();
-    // Kalicilik: kaynak markdown'i GitHub'a yaz (eski ad degistiyse onu sil).
-    if (old && old !== target) await persistRemove(old, `panel: yeniden adlandir ${slug}`);
+    // Kalicilik: eski kaynak tasindiysa GitHub'dan sil, yeniyi yaz.
+    if (moved) await persistRemove(existing.file, `panel: tasi/yeniden-adlandir ${origSlug}`);
     const synced = await persistPut(target, md, `panel: ${post.draft ? "taslak" : "yayin"} ${slug}`);
     return json(res, 200, {
       ok: build.ok, file: path.basename(target), log: build.log, synced,
@@ -409,19 +439,7 @@ async function api(req, res, url) {
     const hit = findContent(seg[1]);
     if (!hit) return json(res, 404, { error: "Markdown file not found" });
     fs.rmSync(hit.file);
-    const dir = path.join(SITE, hit.type.sitePath, seg[1]);
-    const pageFile = path.join(dir, "index.html");
-    if (fs.existsSync(pageFile)
-      && fs.readFileSync(pageFile, "utf8").includes('class="xrm-schema"')) {
-      fs.rmSync(dir, { recursive: true, force: true });
-    }
-    // Silinen haberin /news/ grid kartini da kaldir (yoksa kirik referans kalir).
-    const newsPage = path.join(SITE, "news", "index.html");
-    if (hit.type.key === "news" && fs.existsSync(newsPage)) {
-      const before = fs.readFileSync(newsPage, "utf8");
-      const after = removeCard(before, seg[1]);
-      if (after !== before) fs.writeFileSync(newsPage, after, "utf8");
-    }
+    removeGenerated(hit.type, seg[1]);          // site sayfasi + /news/ grid karti
     const build = await runBuild();
     // Kalicilik: kaynak markdown'i GitHub'dan da sil.
     const synced = await persistRemove(hit.file, `panel: sil ${seg[1]}`);

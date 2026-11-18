@@ -34,6 +34,9 @@ let insertAt = null;         // "+" ile secilen ekleme konumu
 let postsData = null;        // blog/haber listesi onizlemesi icin (bir kez cekilir)
 let pendingTemplate = null;  // "Yeni sayfa" sablon seciminden gelen bloklar
 let currentDraftId = null;   // cihazda otomatik arsivleme anahtari (Outlook taslak gibi)
+let openedSlug = null;       // editore acilan MEVCUT postun slug'i (yeni postta null).
+                             // Kaydederken originalSlug olarak gider: slug/kategori
+                             // degisse bile server eski kaydi bulup tasir (duplikat olmaz).
 
 const ARCH = "xb-arch:";
 // Formun o anki tam goruntusu (arsive/geri yuklemeye uygun).
@@ -829,6 +832,7 @@ function collectPost(draft) {
     cover, sections: sections.join(", "), logo,
     editor: "blocks",
     body: JSON.stringify(page.blocks),
+    originalSlug: openedSlug,          // mevcut postu duzenliyorsak eski slug (yoksa null)
     draft,
   };
 }
@@ -841,6 +845,7 @@ async function save(draft) {
     if (!r.ok) { toast("Build error:\n" + (r.log || "").slice(-300), "err"); return; }
     dirty = false;
     page.slug = post.slug;
+    openedSlug = post.slug;            // bundan sonra ayni postu duzenliyoruz (tekrar tasimayi onler)
     if (draft) {
       toast("Draft saved", "ok");
     } else {
@@ -1041,7 +1046,7 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ---------- acilis (post editoru) ----------
-function resetEditor() { selId = null; past = []; future = []; dirty = false; insertAt = null; }
+function resetEditor() { selId = null; past = []; future = []; dirty = false; insertAt = null; openedSlug = null; }
 function clearDoc() {
   for (const id of ["bld-title", "bld-slug", "bld-teaser", "bld-desc", "bld-cover", "bld-logo"]) $(id).value = "";
   $("bld-cover-thumb").hidden = true;
@@ -1138,6 +1143,7 @@ window.XBuilder = {
     page = { slug: "", title: "", blocks: [] };
     currentDraftId = slug ? "post-" + slug : "new-" + Date.now().toString(36);
     if (slug) {
+      openedSlug = slug;                 // mevcut postu duzenliyoruz
       try {
         const d = await getJSON("/api/posts/" + slug);
         const data = d.data || {};
