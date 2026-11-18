@@ -56,7 +56,10 @@ function matchingDivEnd(html, openEnd) {
   return -1;
 }
 
-const RECENT_OPEN = /<div class="wpcap-grid-container[^"]*">/;
+// Post grid kabi: xrm-featured-grid OLMAYAN ilk wpcap-grid-container (yani
+// gercek News grid'i, Featured seridi degil) -- serit nerede olursa olsun
+// fillRecent her zaman dogru grid'i hedefler.
+const RECENT_OPEN = /<div class="wpcap-grid-container(?![^"]*xrm-featured)[^"]*">/;
 
 // Post grid: News grid'ini indeksten TAMAMEN yeniden uretir (en yeni N, tarihe
 // gore). `posts` cagiran tarafca zaten tarihe gore sirali ve kirpilmis gelir;
