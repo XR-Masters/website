@@ -22,7 +22,7 @@ const page = (...cards) =>
 
 test("renderHomeCard: wpcap-post markup + kapak + link", () => {
   const html = renderHomeCard(post());
-  assert.match(html, /class="wpcap-post post-20001/);
+  assert.match(html, /class="wpcap-post xrm-home-card post-20001/);
   assert.match(html, /href="\/yeni\/"/);
   assert.match(html, /src="\/assets\/blog\/a\.webp"/);
   assert.match(html, /has-post-thumbnail/);
@@ -115,7 +115,7 @@ test("fillMedia: media yoksa HTML degismez", () => {
 
 test("renderMediaCard: elementor-post markup + XSS", () => {
   const html = renderMediaCard(post({ title: "<b>x</b>", sections: ["media"] }));
-  assert.match(html, /class="elementor-post elementor-grid-item post-20001/);
+  assert.match(html, /class="elementor-post xrm-media-card elementor-grid-item post-20001/);
   assert.match(html, /category-media-coverage/);
   assert.ok(!html.includes("<b>x"));
 });

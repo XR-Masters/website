@@ -16,7 +16,7 @@ import { TYPES, loadTypeAssets } from "./lib/content-types.js";
 import { buildLegacyIndex, sortByDateDesc } from "./lib/legacy.js";
 import { collectPages, buildSitemap, buildRobots } from "./lib/sitemap.js";
 import { prependCards, countCards } from "./lib/listing.js";
-import { fillRecent, fillFeatured, fillMedia, fillCustomerSuccess } from "./lib/homepage.js";
+import { fillRecent, fillFeatured, fillMedia, fillCustomerSuccess, ensureCardCss } from "./lib/homepage.js";
 
 const SITE = "site";
 const GEN = path.join("tools", "generated");
@@ -133,6 +133,7 @@ function main() {
     after = fillFeatured(after, featured);
     after = fillMedia(after, media);
     after = fillCustomerSuccess(after, custSuccess);
+    after = ensureCardCss(after);              // kapak thumbnail'lerini sabit kutuya oturt
     if (after !== before) fs.writeFileSync(homePage, after, "utf8");
     console.log(`home       : featured ${featured.length}, post ${postGrid.length}, `
       + `media ${media.length}, logos ${custSuccess.length}`);

@@ -11,6 +11,22 @@
 
 import { escapeHtml } from "./sanitize.js";
 
+// Panelden gelen kartlarin kapak gorseli SABIT thumbnail kutusuna oturur
+// (object-fit: cover), yoksa portre/kare kapak (or. 1920x1884 headshot) devasa
+// cikiyor. Yalniz BIZIM kartlarimiza (xrm-home-card / xrm-media-card) uygulanir;
+// sayfadaki diger WP gridleri etkilenmez. Idempotent: isaretli, bir kez eklenir.
+const CARD_CSS_MARK = "<!--xrm-card-css-->";
+export function ensureCardCss(html) {
+  if (html.includes(CARD_CSS_MARK)) return html;
+  const css = `${CARD_CSS_MARK}<style>`
+    + `.xrm-home-card .post-grid-thumbnail{overflow:hidden;border-radius:8px;}`
+    + `.xrm-home-card .post-grid-thumbnail img{width:100%;height:200px;object-fit:cover;display:block;}`
+    + `.xrm-featured-grid .xrm-home-card .post-grid-thumbnail img{height:240px;}`
+    + `.xrm-media-card .elementor-post__thumbnail img{width:100%;height:180px;object-fit:cover;display:block;}`
+    + `</style>`;
+  return html.includes("</head>") ? html.replace("</head>", css + "</head>") : css + html;
+}
+
 function coverSrc(cover) {
   if (!cover) return null;
   const s = String(cover);
@@ -31,7 +47,7 @@ export function renderHomeCard(post) {
       + `<img decoding="async" src="${escapeHtml(src)}" `
       + `class="attachment-medium_large size-medium_large wp-post-image" alt=""></a></div>`
     : "";
-  return `<article id="post-${id}" class="wpcap-post post-${id} post type-post status-publish format-standard${thumbClass} hentry category-blog wpbf-post">
+  return `<article id="post-${id}" class="wpcap-post xrm-home-card post-${id} post type-post status-publish format-standard${thumbClass} hentry category-blog wpbf-post">
             <div class="post-grid-inner">${thumb}
                 <div class="post-grid-text-wrap">
                     <h3 class="title"><a href="${url}">${title}</a></h3>
@@ -122,7 +138,7 @@ export function renderMediaCard(post) {
       + `<div class="elementor-post__thumbnail"><img src="${escapeHtml(src)}" `
       + `class="attachment-medium size-medium" alt=""></div></a>`
     : "";
-  return `<article class="elementor-post elementor-grid-item post-${id} post type-post status-publish format-standard${thumbClass} hentry category-blog category-media-coverage wpbf-post" role="listitem">
+  return `<article class="elementor-post xrm-media-card elementor-grid-item post-${id} post type-post status-publish format-standard${thumbClass} hentry category-blog category-media-coverage wpbf-post" role="listitem">
 ${thumb}
     <div class="elementor-post__text">
       <h3 class="elementor-post__title"><a href="${url}">${title}</a></h3>
