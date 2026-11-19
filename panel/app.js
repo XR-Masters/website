@@ -179,13 +179,18 @@ function mediaUrl(cover) {
   return `/site/${String(cover).replace(/^(?:\.\.\/)+/, "").replace(/^\/+/, "")}`;
 }
 
+// Yerlesim etiketi gorunumu (orn. "customer-success"): kategori degil, posttaki
+// sections tag'ine gore filtreler -> Blog ve Projects'teki CS'ler birlikte gorulur.
+let sectionFilter = "";
+
 function renderList() {
   const q = $("search").value.trim().toLowerCase();
   const cat = $("filter-cat").value;
   const shown = posts.filter((p) =>
     (!q || (p.title || "").toLowerCase().includes(q))
-    && (!cat || p.category === cat));
-  const filtered = q || cat;
+    && (!cat || p.category === cat)
+    && (!sectionFilter || (Array.isArray(p.sections) && p.sections.includes(sectionFilter))));
+  const filtered = q || cat || sectionFilter;
   $("count").textContent = `(${shown.length}${filtered ? ` / ${posts.length}` : ""})`;
 
   const list = $("list");
@@ -290,6 +295,16 @@ for (const b of document.querySelectorAll(".wp-nav-item")) {
     document.body.classList.remove("nav-open");    // dar ekranda menuyu kapat
     if (nav === "new") { setActiveNav("new"); window.XPanel.showBuilder(); return; }
     if (nav === "archive") { window.XPanel.showArchive(); return; }
+    if (nav === "customer-success") {
+      // Yerlesim gorunumu: kategori farketmez (Blog+Projects), sections'a gore suz.
+      sectionFilter = "customer-success";
+      $("filter-cat").value = "";
+      setActiveNav(nav);
+      showView("list");
+      renderList();
+      return;
+    }
+    sectionFilter = "";                            // normal kategori gorunumu
     $("filter-cat").value = nav;
     setActiveNav(nav);
     showView("list");
@@ -299,7 +314,7 @@ for (const b of document.querySelectorAll(".wp-nav-item")) {
 
 // builder.js panel gorunumlerini bu kucuk kopru uzerinden yonetir.
 window.XPanel = {
-  showList() { setActiveNav(""); showView("list"); },
+  showList() { sectionFilter = ""; setActiveNav(""); showView("list"); },
   showBuilder(slug) { setActiveNav("new"); showView("builder"); window.XBuilder?.open(slug); },
   showBuilderArchive(id) { setActiveNav("new"); showView("builder"); window.XBuilder?.openArchive(id); },
   showArchive() { setActiveNav("archive"); showView("archive"); window.XBuilder?.renderArchive(); },

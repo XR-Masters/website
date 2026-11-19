@@ -392,6 +392,11 @@ async function api(req, res, url) {
             slug, category: t.key, title: data.title, date: data.date,
             teaser: data.teaser ?? "",
             description: data.description ?? "", cover: data.cover ?? null,
+            // sections: Customer Success gibi yerlesim gorunumleri taslaklari da
+            // listeleyebilsin (virgullu string -> dizi, indeksteki bicimle ayni).
+            sections: data.sections
+              ? String(data.sections).split(",").map((s) => s.trim()).filter(Boolean)
+              : [],
             source: "draft", draft: true,
           });
         }
