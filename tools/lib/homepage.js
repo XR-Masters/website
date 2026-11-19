@@ -1,10 +1,14 @@
-// Ana sayfadaki bolumleri icerik indeksinden doldurur. build.js her deploy'da
-// TEMIZ (commit'li, legacy) homepage uzerinde calistigi icin fonksiyonlar
-// idempotent olmasa da sonuc hep ayni: legacy + guncel icerik.
+// Ana sayfadaki bolumleri icerik indeksinden doldurur. Tum enjektorler
+// IDEMPOTENT: ayni homepage uzerinde tekrar tekrar calissa da sonuc degismez
+// (lokalde her post runBuild'i tetikler, Railway'de her deploy COPY . . ile
+// temiz homepage'den basalar -- iki yolda da cogalmamali).
 //
 // KURALLAR:
-//  - Most Recent (News widget): en yeni blog, Featured/Media HARIC (Customer
-//    Success dahil). build.js suzup verir.
+//  - Most Recent (News grid): en yeni 9 news postu (HEPSI). Featured/Media
+//    EK yerlesimdir, postu gridden cikarmaz. build.js suzup verir.
+//  - Customer Success: logolar ONUR sistemi -- eklenir ve KALIR, limit yok.
+//    Enjekte edilenler <!--xrm-cs--> isareti arasinda durur; her build once
+//    eskisini siler sonra gunceli koyar -> panelden silince logo da kalkar.
 //  - Featured: News basliginin altina "Featured" seridi (en yeni 2).
 //  - Featured, Most Recent'tan ONCE doldurulur ki fillRecent orijinal News
 //    grid'ini (tek wpcap-grid) hedeflesin; Featured seridi ONUN ustune girer.
@@ -119,8 +123,9 @@ export function fillFeatured(html, posts, { limit = 2 } = {}) {
   const block = `${FEATURED_MARK}<div class="elementor-element elementor-widget elementor-widget-heading" data-xrm="featured-head"><div class="elementor-widget-container"><h4 class="elementor-heading-title elementor-size-default">Featured</h4></div></div>
 <div class="elementor-element elementor-grid-2 elementor-grid-tablet-2 elementor-grid-mobile-1 elementor-widget elementor-widget-elementor-blog-posts" data-xrm="featured" data-widget_type="elementor-blog-posts.default"><div class="elementor-widget-container"><div class="wpcap-grid"><div class="wpcap-grid-container elementor-grid wpcap-grid-desktop-2 wpcap-grid-tablet-2 wpcap-grid-mobile-1 xrm-featured-grid">
 ${cards}
-</div></div></div></div>${FEATURED_MARK_END}
-`;
+</div></div></div></div>${FEATURED_MARK_END}`;
+  // Not: isaret bolgesi disinda bosluk birakma -> strip tam geri alsin, tekrar
+  // build'de serit bosluk bile buyumesin (CS ile ayni idempotentlik).
   return html.slice(0, i) + block + html.slice(i);
 }
 
@@ -197,14 +202,32 @@ export function renderLogoSlide(post) {
 
 const CS_OPEN = /<div class="swiper-wrapper" aria-live="off">/;
 
-// Customer Success logolarini carousel'in BASINA ekle. Mevcut slide'lara
-// DOKUNMAZ (26 logoyu kaybetme riski yok); build her deploy'da temiz homepage'den
-// basladigi icin ayni logo cogalmaz.
+// Enjekte edilen panel logolari bu iki isaret arasinda durur. Carousel'deki
+// mevcut WordPress logolari (isaretsiz) HIC dokunulmaz; strip yalniz kendi
+// bolgemizi kaldirir.
+const CS_MARK = "<!--xrm-cs-->";
+const CS_MARK_END = "<!--/xrm-cs-->";
+
+function stripCustomerSuccess(html) {
+  const a = html.indexOf(CS_MARK);
+  if (a === -1) return html;
+  const b = html.indexOf(CS_MARK_END, a);
+  if (b === -1) return html;
+  return html.slice(0, a) + html.slice(b + CS_MARK_END.length);
+}
+
+// Customer Success logolarini carousel'in BASINA ekle. Onceki enjekte bolgeyi
+// her zaman once SILER, sonra gunceli koyar: idempotent (tekrar build cogaltmaz)
+// ve panelden bir CS postu silinince logosu da kalkar. Mevcut WP logolarina
+// (isaretsiz) dokunulmaz. Onur sistemi -> limit yok, hepsi kalir.
 export function fillCustomerSuccess(html, posts) {
+  html = stripCustomerSuccess(html);
   const fresh = posts.map(renderLogoSlide).filter(Boolean);   // logosuzlar elenir
   if (!fresh.length) return html;
   const m = CS_OPEN.exec(html);
   if (!m) return html;
   const at = m.index + m[0].length;
-  return `${html.slice(0, at)}\n${fresh.join("\n")}\n${html.slice(at)}`;
+  // Tum bosluk isaret bolgesinin ICINDE: strip tam geri alsin, build tekrarinda
+  // bosluk bile buyumesin (byte-for-byte idempotent).
+  return `${html.slice(0, at)}${CS_MARK}\n${fresh.join("\n")}\n${CS_MARK_END}${html.slice(at)}`;
 }

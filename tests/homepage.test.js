@@ -148,3 +148,22 @@ test("fillCustomerSuccess: CS postu yoksa HTML degismez (logolar korunur)", () =
   assert.equal(fillCustomerSuccess(before, []), before);
   assert.equal(fillCustomerSuccess(before, [post({ logo: null })]), before);
 });
+
+test("fillCustomerSuccess: iki kez cagrilinca logolar COGALMAZ (idempotent)", () => {
+  const cs = post({ logo: "assets/blog/l.png", sections: ["customer-success"] });
+  const once = fillCustomerSuccess(csPage(logoSlide(901)), [cs]);
+  const twice = fillCustomerSuccess(once, [cs]);
+  // bir build daha ayni sonucu verir: tekrarlanan enjeksiyon slide cogaltmaz
+  assert.equal(once, twice, "ikinci build HTML'i degistirmemeli");
+  assert.equal((twice.match(/swiper-slide/g) || []).length, 2, "mevcut 1 + panel 1 = 2");
+  assert.ok(twice.includes("post-901"), "WP logosu durmali");
+});
+
+test("fillCustomerSuccess: CS postu silinince (posts=[]) enjekte logo kalkar, WP durur", () => {
+  const cs = post({ logo: "assets/blog/l.png", sections: ["customer-success"] });
+  const added = fillCustomerSuccess(csPage(logoSlide(901)), [cs]);
+  const removed = fillCustomerSuccess(added, []);   // panelden silindi -> gelmez
+  assert.ok(!removed.includes("/yeni/"), "panel logosu kalkmali");
+  assert.ok(removed.includes("post-901"), "WP logosu durmali");
+  assert.equal((removed.match(/swiper-slide/g) || []).length, 1);
+});

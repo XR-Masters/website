@@ -113,15 +113,15 @@ function main() {
   // `combined` is already sortByDateDesc. This makes each section show exactly
   // the newest N regardless of publish order:
   //   Featured strip = newest 2 tagged "featured"
-  //   Post grid      = newest 9 (tagged "post", plus legacy news which is post)
+  //   Post grid      = newest 9 news posts (HER news postu; featured/media EK
+  //                    yerlesim, postu gridden cikarmaz)
   //   Media          = newest 2 tagged "media" (prepended to existing cards)
-  // A post tagged both post+featured shows in BOTH the grid and the strip.
+  // A featured/media post also shows in the grid (shows in BOTH).
   const hasSec = (e, s) => Array.isArray(e.sections) && e.sections.includes(s);
   const newsAll = combined.filter((e) => e.category === "news");
   const featured = newsAll.filter((e) => hasSec(e, "featured")).slice(0, 2);
   const media = newsAll.filter((e) => hasSec(e, "media")).slice(0, 2);
-  const postGrid = newsAll
-    .filter((e) => e.source === "legacy" || hasSec(e, "post")).slice(0, 9);
+  const postGrid = newsAll.slice(0, 9);
   // Customer Success: tur farketmez (news/projects), logosu olanlar.
   const custSuccess = newEntries.filter((e) =>
     e.sections.includes("customer-success") && e.logo);
