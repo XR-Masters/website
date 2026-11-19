@@ -9,6 +9,13 @@
                frame-src 'self' https://www.youtube-nocookie.com https://player.vimeo.com;
                connect-src 'self'">
 <title>XR Masters - Blog Panel</title>
+<!-- Tarayici sekmesi logosu (favicon): canli sitedeki XR Masters logosu. Panel
+     /admin altinda ama /wp-content kok'ten (site/) public servis ediliyor,
+     ayni origin -> CSP img-src 'self' yeterli. Internet yokken tarayici bu
+     ikonu griye cevirir (istenen davranis). -->
+<link rel="icon" href="/wp-content/uploads/2020/12/XR-Masters-Logo-Guide-v1-1.webp" sizes="32x32">
+<link rel="icon" href="/wp-content/uploads/2020/12/XR-Masters-Logo-Guide-v1-1.webp" sizes="192x192">
+<link rel="apple-touch-icon" href="/wp-content/uploads/2020/12/XR-Masters-Logo-Guide-v1-1.webp">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
