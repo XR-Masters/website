@@ -103,7 +103,6 @@ const FEATURED_OPEN = /<div class="wpcap-grid-container[^"]*wpcap-grid-desktop-2
 // serit/baslik YOK. Featured post yoksa mevcut 2 buyuk posta dokunmaz.
 // renderHomeCard markup'i bu widget'inkiyle ayni (wpcap-post). fillMedia ile ayni kalip.
 export function fillFeatured(html, posts, { limit = 2 } = {}) {
-  if (!posts.length) return html;
   const m = FEATURED_OPEN.exec(html);
   if (!m) return html;
   const innerStart = m.index + m[0].length;
@@ -111,12 +110,11 @@ export function fillFeatured(html, posts, { limit = 2 } = {}) {
   if (closeIdx === -1) return html;
   const inner = html.slice(innerStart, closeIdx);
   const existing = [...inner.matchAll(/<article[\s\S]*?<\/article>/g)].map((x) => x[0]);
-  const ids = new Set(posts.map((p) => `post-${p.id ?? 0}`));
-  const kept = existing.filter((a) => {
-    const id = /\bpost-(\d+)\b/.exec(a);
-    return !id || !ids.has(`post-${id[1]}`);
-  });
-  const cards = [...posts.map(renderHomeCard), ...kept].slice(0, limit);
+  // Onceki build'de ENJEKTE ettigimiz panel kartlarini (xrm-home-card) cikar ki
+  // panelden SILINEN bir featured post gride takili kalmasin; sadece gercek WP
+  // (legacy) buyuk postlar kalir. Idempotent: her build ayni sonucu verir.
+  const legacy = existing.filter((a) => !a.includes("xrm-home-card"));
+  const cards = [...posts.map(renderHomeCard), ...legacy].slice(0, limit);
   return `${html.slice(0, innerStart)}\n${cards.join("\n")}\n${html.slice(closeIdx)}`;
 }
 
@@ -147,8 +145,9 @@ ${thumb}
 const MEDIA_OPEN = /<div class="elementor-posts-container[^"]*"[^>]*>/;
 
 // Media Coverage widget'ina en yeni Media postlarini basa ekle (limit 2).
+// fillFeatured ile ayni kalip: onceki enjekte panel kartlarini (xrm-media-card)
+// cikar -> silinen media post gride takili kalmasin; legacy WP kartlari kalir.
 export function fillMedia(html, posts, { limit = 2 } = {}) {
-  if (!posts.length) return html;
   const m = MEDIA_OPEN.exec(html);
   if (!m) return html;
   const innerStart = m.index + m[0].length;
@@ -156,12 +155,8 @@ export function fillMedia(html, posts, { limit = 2 } = {}) {
   if (closeIdx === -1) return html;
   const inner = html.slice(innerStart, closeIdx);
   const existing = [...inner.matchAll(/<article[\s\S]*?<\/article>/g)].map((x) => x[0]);
-  const ids = new Set(posts.map((p) => `post-${p.id ?? 0}`));
-  const kept = existing.filter((a) => {
-    const id = /\bpost-(\d+)\b/.exec(a);
-    return !id || !ids.has(`post-${id[1]}`);
-  });
-  const cards = [...posts.map(renderMediaCard), ...kept].slice(0, limit);
+  const legacy = existing.filter((a) => !a.includes("xrm-media-card"));
+  const cards = [...posts.map(renderMediaCard), ...legacy].slice(0, limit);
   return `${html.slice(0, innerStart)}\n${cards.join("\n")}\n${html.slice(closeIdx)}`;
 }
 

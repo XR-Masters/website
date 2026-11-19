@@ -90,9 +90,18 @@ test("fillFeatured: 2 asilinca en eski (legacy) duser", () => {
   assert.ok(out.includes("/f1/") && out.includes("/f2/") && !out.includes("/eski/"));
 });
 
-test("fillFeatured: featured yoksa mevcut 2 buyuk post degismez", () => {
-  const p = featuredPage(legacy(11, "eski", "Eski"));
-  assert.equal(fillFeatured(p, []), p);
+test("fillFeatured: featured yoksa legacy buyuk postlar kalir, panel karti eklenmez", () => {
+  const out = fillFeatured(featuredPage(legacy(11, "eski", "Eski")), []);
+  assert.ok(out.includes("/eski/"), "legacy buyuk post korunur");
+  assert.ok(!out.includes("xrm-home-card"), "panel karti eklenmez");
+});
+
+test("fillFeatured: panelden SILINEN featured gride takili kalmaz", () => {
+  const added = fillFeatured(featuredPage(legacy(11, "eski", "Eski")), [f(1)]);
+  assert.ok(added.includes("/f1/"), "once eklenmis olmali");
+  const afterDelete = fillFeatured(added, []);   // f1 silindi -> artik posts'ta yok
+  assert.ok(!afterDelete.includes("/f1/"), "silinen featured kalkar");
+  assert.ok(afterDelete.includes("/eski/"), "legacy kalir");
 });
 
 test("fillFeatured: ayni featured iki build'de cogalmaz (idempotent)", () => {
@@ -124,9 +133,18 @@ test("fillMedia: limit 2 asilinca en eski (legacy) duser", () => {
   assert.ok(!out.includes("/md3/") && !out.includes("/eski/"), "3. ve legacy dusmeli");
 });
 
-test("fillMedia: media yoksa HTML degismez", () => {
-  const p = mediaPage(mediaLegacy(1, "x"));
-  assert.equal(fillMedia(p, []), p);
+test("fillMedia: media yoksa legacy kalir, panel media eklenmez", () => {
+  const out = fillMedia(mediaPage(mediaLegacy(1, "x")), []);
+  assert.ok(out.includes("/x/"), "legacy media korunur");
+  assert.ok(!out.includes("xrm-media-card"), "panel media eklenmez");
+});
+
+test("fillMedia: panelden SILINEN media gride takili kalmaz", () => {
+  const added = fillMedia(mediaPage(mediaLegacy(1, "x")), [md(1)]);
+  assert.ok(added.includes("/md1/"), "once eklenmis olmali");
+  const afterDelete = fillMedia(added, []);      // md1 silindi
+  assert.ok(!afterDelete.includes("/md1/"), "silinen media kalkar");
+  assert.ok(afterDelete.includes("/x/"), "legacy media kalir");
 });
 
 test("renderMediaCard: elementor-post markup + XSS", () => {
