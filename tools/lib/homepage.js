@@ -9,9 +9,9 @@
 //  - Customer Success: logolar ONUR sistemi -- eklenir ve KALIR, limit yok.
 //    Enjekte edilenler <!--xrm-cs--> isareti arasinda durur; her build once
 //    eskisini siler sonra gunceli koyar -> panelden silince logo da kalkar.
-//  - Featured: News basliginin altina "Featured" seridi (en yeni 2).
-//  - Featured, Most Recent'tan ONCE doldurulur ki fillRecent orijinal News
-//    grid'ini (tek wpcap-grid) hedeflesin; Featured seridi ONUN ustune girer.
+//  - Featured: "Updates & Recent" altindaki 2 BUYUK postun gridi (desktop-2);
+//    en yeni 2 featured basa, mevcutlar korunur. AYRI bir "Featured" serit YOK.
+//  - 9-grid (desktop-3) ile Featured (desktop-2) kolon-sinifindan ayirt edilir.
 
 import { escapeHtml } from "./sanitize.js";
 
@@ -25,7 +25,7 @@ export function ensureCardCss(html) {
   const css = `${CARD_CSS_MARK}<style>`
     + `.xrm-home-card .post-grid-thumbnail{overflow:hidden;border-radius:8px;}`
     + `.xrm-home-card .post-grid-thumbnail img{width:100%;height:200px;object-fit:cover;display:block;}`
-    + `.xrm-featured-grid .xrm-home-card .post-grid-thumbnail img{height:240px;}`
+    + `.wpcap-grid-desktop-2 .xrm-home-card .post-grid-thumbnail img{height:240px;}`
     + `.xrm-media-card .elementor-post__thumbnail img{width:100%;height:180px;object-fit:cover;display:block;}`
     + `</style>`;
   return html.includes("</head>") ? html.replace("</head>", css + "</head>") : css + html;
@@ -76,10 +76,9 @@ function matchingDivEnd(html, openEnd) {
   return -1;
 }
 
-// Post grid kabi: xrm-featured-grid OLMAYAN ilk wpcap-grid-container (yani
-// gercek News grid'i, Featured seridi degil) -- serit nerede olursa olsun
-// fillRecent her zaman dogru grid'i hedefler.
-const RECENT_OPEN = /<div class="wpcap-grid-container(?![^"]*xrm-featured)[^"]*">/;
+// Post grid (9'luk): "Updates & Recent" altindaki 3 kolonlu grid. Featured
+// gridi 2 kolonlu (desktop-2), bu yuzden kolon-sinifiyla ayirt ediyoruz.
+const RECENT_OPEN = /<div class="wpcap-grid-container[^"]*wpcap-grid-desktop-3[^"]*">/;
 
 // Post grid: News grid'ini indeksten TAMAMEN yeniden uretir (en yeni N, tarihe
 // gore). `posts` cagiran tarafca zaten tarihe gore sirali ve kirpilmis gelir;
@@ -96,37 +95,29 @@ export function fillRecent(html, posts, { limit = 9 } = {}) {
   return `${html.slice(0, innerStart)}\n${cards.join("\n")}\n${html.slice(closeIdx)}`;
 }
 
-// News basliginin altindaki "Updates & Recent Accomplishments" kabindan ONCE
-// bir "Featured" seridi ekler (en yeni 2). TEMIZ homepage'de bu kap yok, build
-// her seferinde temizden basladigi icin cogalmaz.
-const FEATURED_ANCHOR = '<div class="elementor-element elementor-element-9543c66';
-// Enjekte edilen Featured seridi bu iki isaret arasinda durur; her build once
-// eskisini SILER sonra yenisini koyar -> idempotent (lokalde tekrar tekrar
-// build cogaltmaz) ve son featured kalmazsa serit tamamen kalkar.
-const FEATURED_MARK = "<!--xrm-featured-->";
-const FEATURED_MARK_END = "<!--/xrm-featured-->";
+// Featured kabi: "Updates & Recent" altindaki 2 BUYUK postun gridi (2 kolonlu).
+const FEATURED_OPEN = /<div class="wpcap-grid-container[^"]*wpcap-grid-desktop-2[^"]*">/;
 
-function stripFeatured(html) {
-  const a = html.indexOf(FEATURED_MARK);
-  if (a === -1) return html;
-  const b = html.indexOf(FEATURED_MARK_END, a);
-  if (b === -1) return html;
-  return html.slice(0, a) + html.slice(b + FEATURED_MARK_END.length);
-}
-
+// Featured: mevcut 2 buyuk postun gridine en yeni featured postlari basa ekler,
+// ayni post-id'leri ayiklar (idempotent) ve 2'de kirpar. Ayri bir "Featured"
+// serit/baslik YOK. Featured post yoksa mevcut 2 buyuk posta dokunmaz.
+// renderHomeCard markup'i bu widget'inkiyle ayni (wpcap-post). fillMedia ile ayni kalip.
 export function fillFeatured(html, posts, { limit = 2 } = {}) {
-  html = stripFeatured(html);                 // onceki seridi her zaman kaldir
-  if (!posts.length) return html;             // featured yoksa serit de yok
-  const i = html.indexOf(FEATURED_ANCHOR);
-  if (i === -1) return html;
-  const cards = posts.slice(0, limit).map(renderHomeCard).join("\n");
-  const block = `${FEATURED_MARK}<div class="elementor-element elementor-widget elementor-widget-heading" data-xrm="featured-head"><div class="elementor-widget-container"><h4 class="elementor-heading-title elementor-size-default">Featured</h4></div></div>
-<div class="elementor-element elementor-grid-2 elementor-grid-tablet-2 elementor-grid-mobile-1 elementor-widget elementor-widget-elementor-blog-posts" data-xrm="featured" data-widget_type="elementor-blog-posts.default"><div class="elementor-widget-container"><div class="wpcap-grid"><div class="wpcap-grid-container elementor-grid wpcap-grid-desktop-2 wpcap-grid-tablet-2 wpcap-grid-mobile-1 xrm-featured-grid">
-${cards}
-</div></div></div></div>${FEATURED_MARK_END}`;
-  // Not: isaret bolgesi disinda bosluk birakma -> strip tam geri alsin, tekrar
-  // build'de serit bosluk bile buyumesin (CS ile ayni idempotentlik).
-  return html.slice(0, i) + block + html.slice(i);
+  if (!posts.length) return html;
+  const m = FEATURED_OPEN.exec(html);
+  if (!m) return html;
+  const innerStart = m.index + m[0].length;
+  const closeIdx = matchingDivEnd(html, innerStart);
+  if (closeIdx === -1) return html;
+  const inner = html.slice(innerStart, closeIdx);
+  const existing = [...inner.matchAll(/<article[\s\S]*?<\/article>/g)].map((x) => x[0]);
+  const ids = new Set(posts.map((p) => `post-${p.id ?? 0}`));
+  const kept = existing.filter((a) => {
+    const id = /\bpost-(\d+)\b/.exec(a);
+    return !id || !ids.has(`post-${id[1]}`);
+  });
+  const cards = [...posts.map(renderHomeCard), ...kept].slice(0, limit);
+  return `${html.slice(0, innerStart)}\n${cards.join("\n")}\n${html.slice(closeIdx)}`;
 }
 
 // --- Media Coverage: "posts.classic" widget'i (elementor-post markup) ---

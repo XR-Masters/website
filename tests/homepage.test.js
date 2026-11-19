@@ -17,8 +17,13 @@ const legacy = (id, slug, title) =>
   + `<h3 class="title"><a href="/${slug}/">${title}</a></h3></div></div></article>`;
 
 const page = (...cards) =>
-  `<head></head><div class="wpcap-grid"><div class="wpcap-grid-container elementor-grid">`
+  `<head></head><div class="wpcap-grid"><div class="wpcap-grid-container elementor-grid wpcap-grid-desktop-3">`
   + cards.join("\n") + `</div></div><footer>x</footer>`;
+
+// Featured: 2 kolonlu grid (desktop-2), 9-grid'den kolon-sinifiyla ayrilir.
+const featuredPage = (...cards) =>
+  `<head></head><div class="wpcap-grid-container elementor-grid wpcap-grid-desktop-2">`
+  + cards.join("\n") + `</div><footer>x</footer>`;
 
 test("renderHomeCard: wpcap-post markup + kapak + link", () => {
   const html = renderHomeCard(post());
@@ -70,20 +75,31 @@ test("prependHomeRecent: widget yoksa HTML degismez", () => {
   assert.equal(fillRecent(h, [post()]), h);
 });
 
-test("fillFeatured: News basligi altina Featured seridi + en yeni 2", () => {
-  const anchor = `<div class="elementor-element elementor-element-9543c66 e-con">X</div>`;
-  const page = `<h2>News</h2>${anchor}`;
-  const f = (n) => post({ slug: `f${n}`, id: 30000 + n, url: `/f${n}/`, sections: ["featured"] });
-  const out = fillFeatured(page, [f(1), f(2), f(3)]);
-  assert.match(out, />Featured</);
-  assert.equal((out.match(/class="wpcap-post/g) || []).length, 2, "sadece 2 featured");
-  assert.ok(out.indexOf(">Featured<") < out.indexOf("9543c66"), "serit anchor'dan once");
-  assert.ok(out.includes("/f1/") && out.includes("/f2/") && !out.includes("/f3/"));
+const f = (n) => post({ slug: `f${n}`, id: 30000 + n, url: `/f${n}/`, sections: ["featured"] });
+
+test("fillFeatured: yeni featured basa, mevcut buyuk post korunur (limit 2)", () => {
+  const out = fillFeatured(featuredPage(legacy(11, "eski", "Eski")), [f(1)]);
+  assert.equal((out.match(/class="wpcap-post/g) || []).length, 2, "yeni + 1 mevcut");
+  assert.ok(out.indexOf("/f1/") < out.indexOf("/eski/"), "yeni once");
+  assert.ok(!out.includes(">Featured<"), "ayri bir Featured basligi EKLENMEZ");
 });
 
-test("fillFeatured: featured yoksa HTML degismez", () => {
-  const page = `<div class="elementor-element elementor-element-9543c66">X</div>`;
-  assert.equal(fillFeatured(page, []), page);
+test("fillFeatured: 2 asilinca en eski (legacy) duser", () => {
+  const out = fillFeatured(featuredPage(legacy(11, "eski", "Eski")), [f(1), f(2)]);
+  assert.equal((out.match(/class="wpcap-post/g) || []).length, 2);
+  assert.ok(out.includes("/f1/") && out.includes("/f2/") && !out.includes("/eski/"));
+});
+
+test("fillFeatured: featured yoksa mevcut 2 buyuk post degismez", () => {
+  const p = featuredPage(legacy(11, "eski", "Eski"));
+  assert.equal(fillFeatured(p, []), p);
+});
+
+test("fillFeatured: ayni featured iki build'de cogalmaz (idempotent)", () => {
+  const once = fillFeatured(featuredPage(legacy(11, "eski", "Eski")), [f(1)]);
+  const twice = fillFeatured(once, [f(1)]);
+  assert.equal(once, twice, "ikinci build degistirmemeli");
+  assert.equal((twice.match(/class="wpcap-post/g) || []).length, 2);
 });
 
 const mediaLegacy = (id, slug) =>

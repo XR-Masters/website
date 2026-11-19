@@ -112,7 +112,8 @@ function main() {
   // Homepage sections are rebuilt from the FULL index by date (newest first);
   // `combined` is already sortByDateDesc. This makes each section show exactly
   // the newest N regardless of publish order:
-  //   Featured strip = newest 2 tagged "featured"
+  //   Featured       = newest 2 tagged "featured" -> "Updates & Recent"
+  //                    altindaki 2 BUYUK postun gridine (ayri serit yok)
   //   Post grid      = newest 9 news posts (HER news postu; featured/media EK
   //                    yerlesim, postu gridden cikarmaz)
   //   Media          = newest 2 tagged "media" (prepended to existing cards)
@@ -128,7 +129,8 @@ function main() {
   const homePage = path.join(SITE, "index.html");
   if (fs.existsSync(homePage)) {
     const before = fs.readFileSync(homePage, "utf8");
-    // Once Post grid (orijinal News grid'ini hedefler), sonra Featured ustune, Media, logolar.
+    // Recent 9-grid (desktop-3), Featured 2 buyuk grid (desktop-2), Media, logolar.
+    // Gridler kolon-sinifindan ayrildigi icin sira onemsiz.
     let after = fillRecent(before, postGrid);
     after = fillFeatured(after, featured);
     after = fillMedia(after, media);
