@@ -145,6 +145,26 @@ h1, h2, h3 { font-weight: 600; margin: 0; }
 .btn-lg { padding: 12px 18px; font-size: 16px; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 
+/* --- Knop-mikrointeractie: hover'da buyur, tiklayinca veerend iciner (yamulup
+   buyur). Yay egrisi (>1) hafif tasma verir -> o guzel esnek his. --- */
+.btn, .wp-icon-btn, .wp-box-actions .btn, .login-box .btn {
+  transition: transform .2s cubic-bezier(.34, 1.56, .64, 1),
+              background .15s ease, border-color .15s ease,
+              color .15s ease, box-shadow .2s ease;
+}
+.btn:hover:not(:disabled) { transform: translateY(-1px) scale(1.04); }
+.btn:active:not(:disabled) { transform: scale(.93); transition-duration: .07s; }
+.btn-primary:hover:not(:disabled) { box-shadow: 0 4px 14px rgba(0, 0, 0, .18); }
+.wp-icon-btn:active { transform: scale(.88); transition-duration: .07s; }
+.wp-nav-item { transition: background .15s, color .15s, transform .12s ease; }
+.wp-nav-item:active { transform: scale(.98); }
+
+/* Erisilebilirlik: "hareketi azalt" tercihi varsa olcek efekti kapanir (saglam). */
+@media (prefers-reduced-motion: reduce) {
+  .btn, .wp-icon-btn { transition: background .15s, border-color .15s, color .15s; }
+  .btn:hover, .btn:active, .wp-icon-btn:active, .wp-nav-item:active { transform: none; }
+}
+
 /* ---- form ---- */
 .input {
   font: inherit; width: 100%; padding: 10px 12px; color: var(--text);
