@@ -31,6 +31,7 @@ let dirty = false;
 let idSeq = 1;
 let renderTimer;
 let insertAt = null;         // "+" ile secilen ekleme konumu
+let animId = null;           // yeni eklenen/tasinan blok: render'da bir kez yercekim animasyonu
 let postsData = null;        // blog/haber listesi onizlemesi icin (bir kez cekilir)
 let pendingTemplate = null;  // "Yeni sayfa" sablon seciminden gelen bloklar
 let currentDraftId = null;   // cihazda otomatik arsivleme anahtari (Outlook taslak gibi)
@@ -154,6 +155,7 @@ function addBlock(type, arr, index) {
   const i = (index == null) ? arr.length : Math.max(0, Math.min(index, arr.length));
   arr.splice(i, 0, block);
   selId = block.id;
+  animId = block.id;
   afterChange();
 }
 function removeBlock(id) {
@@ -171,6 +173,7 @@ function duplicateBlock(id) {
   const copy = reId(JSON.parse(JSON.stringify(loc.block)));
   loc.arr.splice(loc.idx + 1, 0, copy);
   selId = copy.id;
+  animId = copy.id;
   afterChange();
 }
 function moveBlock(id, dir) {
@@ -181,6 +184,7 @@ function moveBlock(id, dir) {
   pushHistory();
   const [b] = loc.arr.splice(loc.idx, 1);
   loc.arr.splice(j, 0, b);
+  animId = b.id;
   afterChange();
 }
 // baska bir diziye (kolon veya ust seviye) tasi
@@ -194,6 +198,7 @@ function reorderTo(fromId, targetArr, index) {
   loc.arr.splice(loc.idx, 1);
   targetArr.splice(Math.max(0, Math.min(i, targetArr.length)), 0, loc.block);
   selId = loc.block.id;
+  animId = loc.block.id;
   afterChange();
 }
 
@@ -307,7 +312,9 @@ function handleDrop(e, arr, index) {
 
 function blockShell(block, arr) {
   const w = document.createElement("div");
-  w.className = "bld-block" + (block.id === selId ? " sel" : "");
+  w.className = "bld-block" + (block.id === selId ? " sel" : "")
+    + (block.id === animId ? " bld-gravity" : "");
+  if (block.id === animId) animId = null;      // animasyon yalnizca bir render calissin
   w.dataset.id = block.id;
   w.draggable = true;
   // belirlenmis boyutlar sarmalayiciya da uygulanir (tutamaclar kenarda kalsin)

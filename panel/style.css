@@ -402,6 +402,20 @@ fieldset.cover legend { font-size: 13px; font-weight: 600; padding: 0 6px; color
 .bld-block { position: relative; border: 1.5px solid #1a1a1a; border-radius: 3px; padding: 8px; margin: 8px 0; cursor: pointer; background: #fff; }
 .bld-block:hover { box-shadow: 0 0 0 2px #9fcfe8; }
 .bld-block.sel { box-shadow: 0 0 0 2px var(--deep); }
+
+/* Yercekim: yeni eklenen/tasinan blok hizlanarak duser, zemine carpip hafif
+   zipler ve oturur. Her keyframe kendi hizlanmasini verir -> gercek fizik hissi. */
+@keyframes bld-gravity-drop {
+  0%   { transform: translateY(-22px); opacity: .25; animation-timing-function: cubic-bezier(.45, 0, .9, .55); }
+  50%  { transform: translateY(7px);   opacity: 1;  animation-timing-function: ease-out; }
+  72%  { transform: translateY(-4px);               animation-timing-function: ease-in; }
+  88%  { transform: translateY(1px);                animation-timing-function: ease-out; }
+  100% { transform: translateY(0); }
+}
+.bld-block.bld-gravity { animation: bld-gravity-drop .55s both; }
+@media (prefers-reduced-motion: reduce) {
+  .bld-block.bld-gravity { animation: none; }
+}
 .bld-block-inner { pointer-events: auto; }
 .bld-block-lb {
   position: absolute; top: -9px; left: 8px; font-size: 10px; font-weight: 600;
