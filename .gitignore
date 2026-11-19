@@ -17,6 +17,10 @@ worker/.dev.vars
 tools/generated/panel-*.png
 tools/generated/*.tmp
 
+# homepage pristine temel: build her seferinde TEMIZ homepage'den uretsin diye
+# bir kez saklanir (Docker ilk build'i). Her container kendi kopyasini uretir.
+tools/generated/home-base.html
+
 # toplanti kayitlari ve dokumleri - repoya girmez (yuzlerce MB)
 video's/
 videos/

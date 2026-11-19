@@ -252,6 +252,9 @@ function deleteLegacy(slug) {
 function frontmatterOf(post) {
   const q = (v) => `"${String(v).replace(/"/g, '\\"')}"`;
   const lines = [`title: ${q(post.title)}`, `date: ${post.date}`];
+  // Kalici yayin damgasi: "en yeni ustte" stack sirasi tam zamana gore olsun
+  // (date yalniz gun). Handler yeni postta simdiyi koyar, duzenlemede eskiyi korur.
+  if (post.published) lines.push(`published: ${post.published}`);
   if (post.teaser) lines.push(`teaser: ${q(post.teaser)}`);
   if (post.description) lines.push(`description: ${q(post.description)}`);
   // Govde bicimi: "blocks" ise govde bloklar JSON'u; yoksa markdown.
@@ -445,6 +448,15 @@ async function api(req, res, url) {
     const dir = path.join(ROOT, type.contentDir);
     fs.mkdirSync(dir, { recursive: true });
     const target = path.join(dir, `${post.date}-${slug}.md`);
+    // Stabil stack sirasi: yeni postta yayin damgasi = simdi; var olan post
+    // duzenlenince ESKI damga korunur (duzenleme postu one almaz, sira kaymaz).
+    post.published = new Date().toISOString();
+    if (existing) {
+      try {
+        const old = parseFrontmatter(fs.readFileSync(existing.file, "utf8")).data;
+        if (old.published) post.published = String(old.published);
+      } catch { /* okunamazsa yeni damga kalir */ }
+    }
     const md = frontmatterOf(post);
     // Tasima/yeniden adlandirma: eski kaynak + URETILMIS ciktiyi (sayfa + kart) kaldir.
     const moved = existing && existing.file !== target;

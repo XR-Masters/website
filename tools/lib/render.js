@@ -257,6 +257,8 @@ export function renderPost({ data, body, slug }, { template, seoGraph, meta, typ
       // teaser: liste kartinda gosterilen kisa ozet (SEO description'dan ayri).
       teaser: data.teaser ?? null,
       date: publishedIso, modified: modifiedIso,
+      // Tam yayin damgasi (varsa): stack sirasi gune degil tam zamana gore.
+      published: data.published ?? null,
       cover: cover ?? null,
       coverWidth: data.coverWidth ?? null,
       coverHeight: data.coverHeight ?? null,

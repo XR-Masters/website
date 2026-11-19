@@ -127,16 +127,31 @@ function main() {
   const custSuccess = newEntries.filter((e) =>
     e.sections.includes("customer-success") && e.logo);
   const homePage = path.join(SITE, "index.html");
+  const homeBase = path.join(GEN, "home-base.html");
   if (fs.existsSync(homePage)) {
-    const before = fs.readFileSync(homePage, "utf8");
+    // PRISTINE TEMEL: homepage HER build TEMIZ temelden uretilir, asla kendi
+    // ciktisindan. Canli container'da runBuild site/index.html'i mutasyona
+    // ugratiyordu; onu kaynak alinca "asagi itilen" featured/media kart kalici
+    // kaybolup silince geri gelmiyordu (stack geri gelmezdi). Temeli bir kez
+    // sakla (Docker ilk build'i COPY'li TEMIZ dosyada calisir); boylece her
+    // build = temel + guncel postlar -> silince onceki otomatik geri gelir.
+    if (!fs.existsSync(homeBase)) {
+      const cur = fs.readFileSync(homePage, "utf8");
+      if (cur.includes("<!--xrm-card-css-->")) {
+        throw new Error("home-base.html yok ama site/index.html zaten enjekte "
+          + "edilmis. Once temiz (commit'li) site/index.html ile build calistir.");
+      }
+      fs.copyFileSync(homePage, homeBase);
+    }
+    const base = fs.readFileSync(homeBase, "utf8");
     // Recent 9-grid (desktop-3), Featured 2 buyuk grid (desktop-2), Media, logolar.
     // Gridler kolon-sinifindan ayrildigi icin sira onemsiz.
-    let after = fillRecent(before, postGrid);
+    let after = fillRecent(base, postGrid);
     after = fillFeatured(after, featured);
     after = fillMedia(after, media);
     after = fillCustomerSuccess(after, custSuccess);
     after = ensureCardCss(after);              // kapak thumbnail'lerini sabit kutuya oturt
-    if (after !== before) fs.writeFileSync(homePage, after, "utf8");
+    fs.writeFileSync(homePage, after, "utf8");
     console.log(`home       : featured ${featured.length}, post ${postGrid.length}, `
       + `media ${media.length}, logos ${custSuccess.length}`);
   }

@@ -90,6 +90,25 @@ test("sortByDateDesc: ayni tarihte slug'a gore stabil", () => {
   assert.deepEqual(sorted.map((p) => p.slug), ["a", "b"]);
 });
 
+test("sortByDateDesc: ayni GUN, published damgasina gore en yeni ustte", () => {
+  // Stack sirasi: ayni gunde published (tam zaman) belirler, slug degil.
+  const day = "2026-11-19";
+  const sorted = sortByDateDesc([
+    { slug: "once", date: day, published: "2026-11-19T10:00:00Z" },
+    { slug: "sonra", date: day, published: "2026-11-19T15:00:00Z" },
+  ]);
+  assert.deepEqual(sorted.map((p) => p.slug), ["sonra", "once"], "en yeni published ustte");
+});
+
+test("sortByDateDesc: published'li panel postu, damgasiz legacy'nin ustunde (ayni gun)", () => {
+  const day = "2026-11-19";
+  const sorted = sortByDateDesc([
+    { slug: "legacy", date: day },                                  // damgasiz -> gun 00:00
+    { slug: "panel", date: day, published: "2026-11-19T09:00:00Z" },
+  ]);
+  assert.equal(sorted[0].slug, "panel", "damgali olan daha yeni sayilir");
+});
+
 test("sortByDateDesc: girdiyi degistirmez", () => {
   const input = [
     { slug: "a", date: "2014-01-01T00:00:00+00:00" },
