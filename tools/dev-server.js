@@ -14,19 +14,22 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { putFile, removeFile } from "./lib/github-content.js";
 import { parseFrontmatter, validatePost } from "./lib/frontmatter.js";
 import { isSafeSlug, assertSafeSlug } from "./lib/slug.js";
 import { renderPost } from "./lib/render.js";
+import { removeCard } from "./lib/listing.js";
 import { TYPES, getType, loadTypeAssets, underType } from "./lib/content-types.js";
 import {
   ALLOWED, isAllowed, randomToken, authorizeUrl, exchangeCode, fetchGitHubUser,
-  createSession, readSession, destroySession,
+  createSession, readSession, destroySession, dumpSessions, loadSessions,
 } from "./lib/github-auth.js";
 
 const ROOT = path.resolve(fileURLToPath(import.meta.url), "..", "..");
-const PORT = 4000;
+// Railway (ve diger host'lar) portu PORT env ile verir; lokalde 4000.
+const PORT = Number(process.env.PORT) || 4000;
 const SITE = path.join(ROOT, "site");
 const PANEL = path.join(ROOT, "panel");
 const GEN = path.join(ROOT, "tools", "generated");
@@ -45,7 +48,11 @@ const MIME = {
 };
 
 const previews = new Map();                 // type -> html
-const BASE = `http://127.0.0.1:${PORT}`;
+// Public adres: Railway'de PUBLIC_URL env'i ver (ör. https://xxx.railway.app);
+// lokalde ayarlanmazsa 127.0.0.1. OAuth callback + cookie Secure bunu kullanir.
+const PUBLIC_URL = (process.env.PUBLIC_URL || `http://127.0.0.1:${PORT}`).replace(/\/+$/, "");
+const IS_HTTPS = PUBLIC_URL.startsWith("https://");
+const BASE = PUBLIC_URL;
 const REDIRECT_URI = `${BASE}/api/callback`;
 const SESSION_COOKIE = "xrm_session";
 const STATE_COOKIE = "xrm_oauth_state";
@@ -69,6 +76,46 @@ if (!OAUTH.clientId || !OAUTH.clientSecret) {
 }
 const AUTH_READY = Boolean(OAUTH.clientId && OAUTH.clientSecret);
 
+// Kalicilik: yayin/silme sonrasi postun KAYNAK markdown'ini GitHub'a yaz/sil
+// (Contents API, bkz. lib/github-content.js). Dockerfile build'i content/ ->
+// site/ yeniden urettigi icin yalniz markdown'in kalici olmasi yeter.
+// GITHUB_TOKEN yoksa (lokal) tamamen kapali; commit'i elle atarsin.
+function detectBranch() {
+  try {
+    const b = execFileSync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: ROOT })
+      .toString().trim();
+    return b && b !== "HEAD" ? b : null;      // detached HEAD -> env/varsayilan
+  } catch { return null; }
+}
+const GIT = {
+  token: process.env.GITHUB_TOKEN || "",
+  repo: process.env.GIT_REPO || "XR-Masters/website",
+  branch: process.env.GIT_BRANCH || detectBranch() || "main",
+};
+// Mutlak dosya yolu -> repo-goreli ("content/news/2026-...-slug.md", ileri slash).
+const repoRel = (abs) => path.relative(ROOT, abs).split(path.sep).join("/");
+async function persistPut(abs, content, message) {
+  if (!GIT.token) return { skipped: true };
+  try { return await putFile({ ...GIT, path: repoRel(abs), content, message }); }
+  catch (e) { console.error("[persist]", e.message); return { ok: false, error: e.message }; }
+}
+async function persistRemove(abs, message) {
+  if (!GIT.token) return { skipped: true };
+  try { return await removeFile({ ...GIT, path: repoRel(abs), message }); }
+  catch (e) { console.error("[persist]", e.message); return { ok: false, error: e.message }; }
+}
+
+// Oturumlari diske sakla ki sunucu yeniden baslayinca kullanici cikmasin.
+// sessions.local.json .gitignore'dadir (icinde oturum token'lari var).
+const SESSIONS_FILE = path.join(ROOT, "tools", "lib", "sessions.local.json");
+try {
+  if (fs.existsSync(SESSIONS_FILE)) loadSessions(JSON.parse(fs.readFileSync(SESSIONS_FILE, "utf8")));
+} catch { /* bozuk dosya: yoksay */ }
+function saveSessions() {
+  try { fs.writeFileSync(SESSIONS_FILE, JSON.stringify(dumpSessions()), "utf8"); }
+  catch { /* yazilamadi: yoksay */ }
+}
+
 function parseCookies(req) {
   const out = {};
   for (const part of (req.headers.cookie || "").split(";")) {
@@ -79,10 +126,12 @@ function parseCookies(req) {
   return out;
 }
 
-// Secure bayragi yok: lokal sunucu http. Uretimde (https) eklenmeli.
+// Secure bayragi yalnizca https'te (PUBLIC_URL https ise, orn. Railway). Lokal
+// http'de Secure konursa cookie hic gonderilmez; o yuzden kosullu.
 function cookie(name, value, { maxAge, sameSite = "Strict" } = {}) {
   const bits = [`${name}=${encodeURIComponent(value)}`, "Path=/", "HttpOnly",
     `SameSite=${sameSite}`];
+  if (IS_HTTPS) bits.push("Secure");
   if (maxAge !== undefined) bits.push(`Max-Age=${maxAge}`);
   return bits.join("; ");
 }
@@ -150,13 +199,77 @@ function findContent(slug) {
   return null;
 }
 
+// Bir postun URETILMIS ciktisini kaldirir: site sayfasi (xrm-schema'li, yani
+// bizim urettigimiz) + /news/ grid karti. Hem silmede hem tasima/yeniden
+// adlandirmada eski ciktinin ortada kalmamasi (orphan sayfa/kart) icin.
+function removeGenerated(type, slug) {
+  const dir = path.join(SITE, type.sitePath, slug);
+  const pageFile = path.join(dir, "index.html");
+  if (fs.existsSync(pageFile)
+    && fs.readFileSync(pageFile, "utf8").includes('class="xrm-schema"')) {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+  if (type.key === "news") {
+    const newsPage = path.join(SITE, "news", "index.html");
+    if (fs.existsSync(newsPage)) {
+      const before = fs.readFileSync(newsPage, "utf8");
+      const after = removeCard(before, slug);
+      if (after !== before) fs.writeFileSync(newsPage, after, "utf8");
+    }
+  }
+}
+
+// Eski (WordPress export) postu sil: markdown kaynagi YOK, sadece statik sayfa.
+// Guvenlik: yalnizca GERCEK blog/proje postunu sil. news'te body class
+// 'single-post' sart -> about-us gibi normal sayfalar korunur. projects zaten
+// xperiences/ altinda (baska sey yok). xrm-schema'li sayfa buraya gelmez
+// (onu findContent markdown'dan bulur).
+function deleteLegacy(slug) {
+  for (const t of Object.values(TYPES)) {
+    const dir = path.join(SITE, t.sitePath, slug);
+    const pageFile = path.join(dir, "index.html");
+    if (!fs.existsSync(pageFile)) continue;
+    const html = fs.readFileSync(pageFile, "utf8");
+    if (html.includes('class="xrm-schema"')) continue;
+    if (t.legacyMarker) {
+      const bc = /<body class="([^"]*)"/.exec(html);
+      if (!bc || !bc[1].split(/\s+/).includes(t.legacyMarker)) continue;
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+    if (t.key === "news") {
+      const newsPage = path.join(SITE, "news", "index.html");
+      if (fs.existsSync(newsPage)) {
+        const before = fs.readFileSync(newsPage, "utf8");
+        const after = removeCard(before, slug);
+        if (after !== before) fs.writeFileSync(newsPage, after, "utf8");
+      }
+    }
+    return { type: t, pageFile };
+  }
+  return null;
+}
+
 function frontmatterOf(post) {
   const q = (v) => `"${String(v).replace(/"/g, '\\"')}"`;
   const lines = [`title: ${q(post.title)}`, `date: ${post.date}`];
+  // Kalici yayin damgasi: "en yeni ustte" stack sirasi tam zamana gore olsun
+  // (date yalniz gun). Handler yeni postta simdiyi koyar, duzenlemede eskiyi korur.
+  if (post.published) lines.push(`published: ${post.published}`);
+  if (post.teaser) lines.push(`teaser: ${q(post.teaser)}`);
   if (post.description) lines.push(`description: ${q(post.description)}`);
+  // Govde bicimi: "blocks" ise govde bloklar JSON'u; yoksa markdown.
+  if (post.editor) lines.push(`editor: ${post.editor}`);
   if (post.cover) lines.push(`cover: ${post.cover}`);
+  // Olculer og:image ve /news/ kartindaki img width/height icin
+  if (post.cover && post.coverWidth) lines.push(`coverWidth: ${post.coverWidth}`);
+  if (post.cover && post.coverHeight) lines.push(`coverHeight: ${post.coverHeight}`);
   if (post.video) lines.push(`video: ${post.video}`);
   if (post.author) lines.push(`author: ${q(post.author)}`);
+  // Coklu deger = virgullu tek string (F16). sections/gallery panelden zaten
+  // virgulle birlestirilmis gelir; logo tek yoldur (cover gibi, tirnaksiz).
+  if (post.sections) lines.push(`sections: ${q(post.sections)}`);
+  if (post.gallery) lines.push(`gallery: ${q(post.gallery)}`);
+  if (post.logo) lines.push(`logo: ${post.logo}`);
   lines.push(`draft: ${post.draft === true}`);
   return `---\n${lines.join("\n")}\n---\n\n${(post.body || "").trim()}\n`;
 }
@@ -183,8 +296,8 @@ async function api(req, res, url) {
   if (req.method === "GET" && seg[0] === "login") {
     if (!AUTH_READY) {
       return json(res, 503, {
-        error: "GitHub OAuth yapilandirilmamis. tools/lib/oauth.local.example.js "
-          + "dosyasini oauth.local.js olarak kopyalayip doldur.",
+        error: "GitHub OAuth is not configured. Copy tools/lib/oauth.local.example.js "
+          + "to oauth.local.js and fill it in.",
       });
     }
     const state = randomToken(16);
@@ -198,7 +311,7 @@ async function api(req, res, url) {
   // GET /api/callback -> code'u takas et, allowlist'i kontrol et
   if (req.method === "GET" && seg[0] === "callback") {
     const fail = (msg) =>
-      redirect(res, `/?error=${encodeURIComponent(msg)}`,
+      redirect(res, `/admin/?error=${encodeURIComponent(msg)}`,
         [cookie(STATE_COOKIE, "", { maxAge: 0, sameSite: "Lax" })]);
 
     if (url.searchParams.get("error")) {
@@ -230,8 +343,9 @@ async function api(req, res, url) {
     }
 
     const s = createSession(user);
+    saveSessions();
     console.log(`[auth] giris: ${user.login} (id ${user.id})`);
-    return redirect(res, "/", [
+    return redirect(res, "/admin/", [
       cookie(SESSION_COOKIE, s.token, { maxAge: s.expiresIn }),
       cookie(STATE_COOKIE, "", { maxAge: 0, sameSite: "Lax" }),
     ]);
@@ -239,6 +353,7 @@ async function api(req, res, url) {
 
   if (req.method === "POST" && seg[0] === "logout") {
     destroySession(cookies[SESSION_COOKIE]);
+    saveSessions();
     res.writeHead(200, {
       "Content-Type": "application/json; charset=utf-8",
       "Set-Cookie": cookie(SESSION_COOKIE, "", { maxAge: 0 }),
@@ -248,7 +363,7 @@ async function api(req, res, url) {
 
   // --- buradan sonrasi oturum gerektirir ---
   if (!session) {
-    return json(res, 401, { error: "Oturum gecersiz veya suresi dolmus" });
+    return json(res, 401, { error: "Session invalid or expired" });
   }
 
   if (req.method === "GET" && seg[0] === "user") {
@@ -275,7 +390,13 @@ async function api(req, res, url) {
         if (data.draft === true) {
           drafts.push({
             slug, category: t.key, title: data.title, date: data.date,
+            teaser: data.teaser ?? "",
             description: data.description ?? "", cover: data.cover ?? null,
+            // sections: Customer Success gibi yerlesim gorunumleri taslaklari da
+            // listeleyebilsin (virgullu string -> dizi, indeksteki bicimle ayni).
+            sections: data.sections
+              ? String(data.sections).split(",").map((s) => s.trim()).filter(Boolean)
+              : [],
             source: "draft", draft: true,
           });
         }
@@ -289,12 +410,12 @@ async function api(req, res, url) {
 
   // GET /api/posts/:slug
   if (req.method === "GET" && seg[0] === "posts" && seg.length === 2) {
-    if (!isSafeSlug(seg[1])) return json(res, 400, { error: "Gecersiz slug" });
+    if (!isSafeSlug(seg[1])) return json(res, 400, { error: "Invalid slug" });
     const hit = findContent(seg[1]);
     if (!hit) {
       return json(res, 404, {
-        error: "Bu icerik WordPress'ten geliyor, markdown kaynagi yok. "
-          + "Duzenlemek icin panelden yeniden olusturulmasi gerekir.",
+        error: "This content comes from WordPress and has no markdown source. "
+          + "To edit it, recreate it from the panel.",
       });
     }
     const { data, body } = parseFrontmatter(fs.readFileSync(hit.file, "utf8"));
@@ -314,42 +435,69 @@ async function api(req, res, url) {
       cover: post.cover, video: post.video,
     }, { slug });
     if (!String(post.body || "").trim()) {
-      return json(res, 400, { error: "Govde bos olamaz" });
+      return json(res, 400, { error: "Content cannot be empty" });
     }
-    // ayni slug baska kategoride varsa reddet (URL cakismasi degil ama kafa karistirir)
-    const other = findContent(slug);
-    if (other && other.type.key !== type.key) {
+    // Duzenlenen postu bul: panel editore acarken originalSlug yollar; boylece
+    // slug VEYA kategori degisse bile ESKI kaydi buluruz ve tasiriz (yoksa yeni
+    // kayit acilir, eskisi oldugu yerde kalir = duplikat).
+    const origSlug = post.originalSlug && isSafeSlug(String(post.originalSlug))
+      ? String(post.originalSlug) : slug;
+    const existing = findContent(origSlug);
+    // Hedef slug'i BASKA bir post kullaniyorsa reddet (gercek cakisma).
+    const clash = findContent(slug);
+    if (clash && (!existing || clash.file !== existing.file)) {
       return json(res, 409, {
-        error: `Bu slug '${other.type.label}' kategorisinde zaten var.`,
+        error: `Slug "${slug}" is already used by another post (${clash.type.label}).`,
       });
     }
     const dir = path.join(ROOT, type.contentDir);
     fs.mkdirSync(dir, { recursive: true });
-    const old = mdFileFor(type.key, slug);
     const target = path.join(dir, `${post.date}-${slug}.md`);
-    if (old && old !== target) fs.rmSync(old);
-    fs.writeFileSync(target, frontmatterOf(post), "utf8");
+    // Stabil stack sirasi: yeni postta yayin damgasi = simdi; var olan post
+    // duzenlenince ESKI damga korunur (duzenleme postu one almaz, sira kaymaz).
+    post.published = new Date().toISOString();
+    if (existing) {
+      try {
+        const old = parseFrontmatter(fs.readFileSync(existing.file, "utf8")).data;
+        if (old.published) post.published = String(old.published);
+      } catch { /* okunamazsa yeni damga kalir */ }
+    }
+    const md = frontmatterOf(post);
+    // Tasima/yeniden adlandirma: eski kaynak + URETILMIS ciktiyi (sayfa + kart) kaldir.
+    const moved = existing && existing.file !== target;
+    if (moved) {
+      fs.rmSync(existing.file);
+      removeGenerated(existing.type, origSlug);
+    }
+    fs.writeFileSync(target, md, "utf8");
     const build = await runBuild();
+    // Kalicilik: eski kaynak tasindiysa GitHub'dan sil, yeniyi yaz.
+    if (moved) await persistRemove(existing.file, `panel: tasi/yeniden-adlandir ${origSlug}`);
+    const synced = await persistPut(target, md, `panel: ${post.draft ? "taslak" : "yayin"} ${slug}`);
     return json(res, 200, {
-      ok: build.ok, file: path.basename(target), log: build.log,
+      ok: build.ok, file: path.basename(target), log: build.log, synced,
       url: post.draft ? null : `/site/${underType(type, slug)}/`,
     });
   }
 
   // DELETE /api/posts/:slug
   if (req.method === "DELETE" && seg[0] === "posts" && seg.length === 2) {
-    if (!isSafeSlug(seg[1])) return json(res, 400, { error: "Gecersiz slug" });
+    if (!isSafeSlug(seg[1])) return json(res, 400, { error: "Invalid slug" });
     const hit = findContent(seg[1]);
-    if (!hit) return json(res, 404, { error: "Markdown dosyasi bulunamadi" });
-    fs.rmSync(hit.file);
-    const dir = path.join(SITE, hit.type.sitePath, seg[1]);
-    const pageFile = path.join(dir, "index.html");
-    if (fs.existsSync(pageFile)
-      && fs.readFileSync(pageFile, "utf8").includes('class="xrm-schema"')) {
-      fs.rmSync(dir, { recursive: true, force: true });
+    if (hit) {
+      // Panelden uretilmis (markdown kaynakli) post.
+      fs.rmSync(hit.file);
+      removeGenerated(hit.type, seg[1]);        // site sayfasi + /news/ grid karti
+      const build = await runBuild();
+      const synced = await persistRemove(hit.file, `panel: sil ${seg[1]}`);
+      return json(res, 200, { ok: build.ok, log: build.log, synced });
     }
+    // Markdown kaynagi yok -> eski (WordPress) post: statik sayfayi kaldir.
+    const legacy = deleteLegacy(seg[1]);
+    if (!legacy) return json(res, 404, { error: "Post not found" });
     const build = await runBuild();
-    return json(res, 200, { ok: build.ok, log: build.log });
+    const synced = await persistRemove(legacy.pageFile, `panel: sil (legacy) ${seg[1]}`);
+    return json(res, 200, { ok: build.ok, log: build.log, synced });
   }
 
   // POST /api/preview
@@ -361,11 +509,13 @@ async function api(req, res, url) {
       const { html } = renderPost({
         slug,
         data: {
-          title: post.title || "(baslik yok)", date: post.date || "2026-01-01",
-          description: post.description, cover: post.cover, video: post.video,
-          author: post.author,
+          title: post.title || "(no title)", date: post.date || "2026-01-01",
+          description: post.description, teaser: post.teaser,
+          cover: post.cover, video: post.video,
+          author: post.author, sections: post.sections, gallery: post.gallery,
+          logo: post.logo, editor: post.editor,
         },
-        body: post.body || "(govde yok)",
+        body: post.body || "(no body)",
       }, loadTypeAssets(type.key));
       previews.set(type.key, html);
       return json(res, 200, {
@@ -380,12 +530,12 @@ async function api(req, res, url) {
   if (req.method === "POST" && seg[0] === "media") {
     const { filename, dataUrl } = await jsonBody(req);
     const m = /^data:([\w/+.-]+);base64,(.+)$/s.exec(dataUrl || "");
-    if (!m) return json(res, 400, { error: "Gecersiz dataUrl" });
+    if (!m) return json(res, 400, { error: "Invalid dataUrl" });
     const buf = Buffer.from(m[2], "base64");
     if (buf.length > MAX_UPLOAD) {
       return json(res, 413, {
-        error: `Dosya ${Math.round(buf.length / 1048576)} MB. Limit 50 MB. `
-          + `Video icin YouTube/Vimeo linki kullan.`,
+        error: `File is ${Math.round(buf.length / 1048576)} MB. Limit is 50 MB. `
+          + `For video, use a YouTube/Vimeo link.`,
       });
     }
     const safe = path.basename(String(filename || "gorsel"))
@@ -401,13 +551,17 @@ async function api(req, res, url) {
       const ext = path.extname(safe);
       name = `${path.basename(safe, ext)}-${i++}${ext}`;
     }
-    fs.writeFileSync(path.join(dir, name), buf);
+    const abs = path.join(dir, name);
+    fs.writeFileSync(abs, buf);
+    // Kalicilik: gorseli de GitHub'a yaz (yoksa redeploy'da kaybolur, post'ta
+    // kirik gorsel kalir). Binary -> putFile Buffer'i base64'ler.
+    const synced = await persistPut(abs, buf, `panel: media ${name}`);
     return json(res, 200, {
-      ok: true, path: `${MEDIA_REL}/${yyyy}/${mm}/${name}`, bytes: buf.length,
+      ok: true, path: `${MEDIA_REL}/${yyyy}/${mm}/${name}`, bytes: buf.length, synced,
     });
   }
 
-  return json(res, 404, { error: "Bilinmeyen API yolu" });
+  return json(res, 404, { error: "Unknown API path" });
 }
 
 // --- statik ---
@@ -448,6 +602,25 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // Panel yonetim arayuzu /admin altinda (site kok'u kaplamasin diye).
+  if (url.pathname === "/admin") return redirect(res, "/admin/");
+  if (url.pathname.startsWith("/admin/")) {
+    let rel = url.pathname.slice("/admin".length);   // "/", "/app.js", ...
+    if (rel === "/") rel = "/index.html";
+    const f = safeJoin(PANEL, rel);
+    if (!f) { res.writeHead(403); res.end("403"); return; }
+    return serveFile(res, f);
+  }
+
+  // Panel'in paylasilan lib modulleri
+  if (url.pathname.startsWith("/lib/")) {
+    const f = safeJoin(path.join(ROOT, "tools", "lib"), url.pathname.slice("/lib".length));
+    if (!f) { res.writeHead(403); res.end("403"); return; }
+    return serveFile(res, f);
+  }
+
+  // /site/ de calismaya devam eder: panel'in urettigi baglantilar (onizleme,
+  // yayinlanan post, kapak/logo thumbnail'leri) bu onek'i kullanir.
   if (url.pathname.startsWith("/site/")) {
     let f = safeJoin(SITE, url.pathname.slice("/site".length));
     if (!f) { res.writeHead(403); res.end("403"); return; }
@@ -455,20 +628,21 @@ const server = http.createServer(async (req, res) => {
     return serveFile(res, f);
   }
 
-  const rel = url.pathname === "/" ? "/index.html" : url.pathname;
-  if (rel.startsWith("/lib/")) {
-    const f = safeJoin(path.join(ROOT, "tools", "lib"), rel.slice("/lib".length));
-    if (!f) { res.writeHead(403); res.end("403"); return; }
-    return serveFile(res, f);
-  }
-  const f = safeJoin(PANEL, rel);
-  if (!f) { res.writeHead(403); res.end("403"); return; }
-  serveFile(res, f);
+  // DIGER HER SEY = canli site, kok'ten servis edilir. Sitenin kendi nav
+  // linkleri kok-mutlak ("/about-us/", "/news/", "/wp-content/..."); artik
+  // dogru cozulurler. Dizinlerde index.html'e dus.
+  let sf = safeJoin(SITE, url.pathname === "/" ? "/index.html" : url.pathname);
+  if (!sf) { res.writeHead(403); res.end("403"); return; }
+  if (!path.extname(sf)) sf = path.join(sf, "index.html");
+  serveFile(res, sf);
 });
 
-server.listen(PORT, "127.0.0.1", () => {
-  console.log(`\n  Panel : ${BASE}/`);
-  console.log(`  Site  : ${BASE}/site/`);
+// Host: Railway/host'ta (PUBLIC_URL verilince) tum arabirimlere (0.0.0.0) bagla,
+// yoksa lokalde yalniz 127.0.0.1 (LAN'a acilmasin).
+const HOST = process.env.PUBLIC_URL ? "0.0.0.0" : "127.0.0.1";
+server.listen(PORT, HOST, () => {
+  console.log(`\n  Panel : ${BASE}/admin/`);
+  console.log(`  Site  : ${BASE}/`);
   console.log(`  Giris : GitHub OAuth`);
   if (AUTH_READY) {
     console.log(`  Yetki : ${ALLOWED.map((u) => u.login).join(", ")}`);
