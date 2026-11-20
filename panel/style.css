@@ -397,6 +397,15 @@ fieldset.cover legend { font-size: 13px; font-weight: 600; padding: 0 6px; color
 .bld-drop.over { height: 22px; background: transparent; }
 .bld-dragging .bld-drop.over::after { height: 5px; background: var(--deep); box-shadow: 0 0 0 3px rgba(0, 104, 163, .15); }
 .bld-drag-src { opacity: .35; }
+/* Surukleme hayaleti: fareyle sarkac gibi sallanan etiket (konum+egim JS'te). */
+.bld-drag-ghost {
+  position: fixed; left: 0; top: 0; z-index: 9999; pointer-events: none;
+  padding: 7px 12px; border-radius: 8px; white-space: nowrap;
+  background: var(--deep); color: #fff; font-weight: 600; font-size: 13px; line-height: 1;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, .3);
+  transform-origin: 50% -8px;          /* imlecin biraz ustunden sarkar -> sarkac ekseni */
+  will-change: transform;
+}
 
 /* her blok her zaman SIYAH kenarlikla cikar (editorde = yayinda, WYSIWYG) */
 .bld-block { position: relative; border: 1.5px solid #1a1a1a; border-radius: 3px; padding: 8px; margin: 8px 0; cursor: pointer; background: #fff; }

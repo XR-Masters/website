@@ -211,6 +211,43 @@ function afterChange() {
   updateRtbar();
 }
 
+// ---------- surukleme hayaleti: fareyle SALLANARAK (sarkac) takip eden etiket ----------
+// Native hayalet gizlenir (seffaf resim); yerine body'ye kayan bir etiket koyariz.
+// RAF dongusu etiketi imlece yayla (lag) yaklastirir; imlecin gerisinde kaldigi
+// mesafe = hiz -> ona gore egilir, durunca dik konuma geri sallanir (sarkac).
+let ghost = null, ghostRAF = 0, ghTX = 0, ghTY = 0, ghX = 0, ghY = 0;
+const GHOST_REDUCE = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const GHOST_EMPTY = new Image();
+GHOST_EMPTY.src = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+function startDragGhost(e, label) {
+  try { e.dataTransfer.setDragImage(GHOST_EMPTY, 0, 0); } catch { /* bazi tarayici desteklemez */ }
+  ghost = document.createElement("div");
+  ghost.className = "bld-drag-ghost";
+  ghost.textContent = label || "Element";
+  document.body.appendChild(ghost);
+  ghTX = ghX = e.clientX; ghTY = ghY = e.clientY;
+  document.addEventListener("dragover", ghostTrack, true);
+  if (!ghostRAF) ghostRAF = requestAnimationFrame(ghostLoop);
+}
+function ghostTrack(e) {
+  if (e.clientX === 0 && e.clientY === 0) return;   // birakma aninda gelen 0,0'i yoksay
+  ghTX = e.clientX; ghTY = e.clientY;
+}
+function ghostLoop() {
+  if (!ghost) { ghostRAF = 0; return; }
+  ghX += (ghTX - ghX) * 0.2;                         // yayla imlece yaklas (lag -> salinim)
+  ghY += (ghTY - ghY) * 0.2;
+  const swing = GHOST_REDUCE ? 0 : Math.max(-26, Math.min(26, (ghTX - ghX) * 0.8));
+  ghost.style.transform = `translate(${ghX}px, ${ghY}px) translate(-50%, 2px) rotate(${swing}deg)`;
+  ghostRAF = requestAnimationFrame(ghostLoop);
+}
+function endDragGhost() {
+  document.removeEventListener("dragover", ghostTrack, true);
+  if (ghostRAF) { cancelAnimationFrame(ghostRAF); ghostRAF = 0; }
+  ghost?.remove(); ghost = null;
+}
+
 // ---------- palet ----------
 function renderPalette(filter = "") {
   const box = $("bld-elements");
@@ -250,8 +287,9 @@ function renderPalette(filter = "") {
         e.dataTransfer.setData("text/xb", "new:" + k);
         e.dataTransfer.effectAllowed = "copy";
         document.body.classList.add("bld-dragging");
+        startDragGhost(e, t.label);
       };
-      b.ondragend = () => document.body.classList.remove("bld-dragging");
+      b.ondragend = () => { document.body.classList.remove("bld-dragging"); endDragGhost(); };
       grid.append(b);
     }
     box.append(grid);
@@ -420,10 +458,12 @@ function blockShell(block, arr) {
     e.dataTransfer.effectAllowed = "move";
     document.body.classList.add("bld-dragging");   // tum birakma noktalari belirginlesir
     w.classList.add("bld-drag-src");                // suruklenen blok soluklasir
+    startDragGhost(e, TYPES[block.type]?.label || block.type);
   };
   w.ondragend = () => {
     document.body.classList.remove("bld-dragging");
     w.classList.remove("bld-drag-src");
+    endDragGhost();
   };
   return w;
 }
