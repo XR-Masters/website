@@ -113,6 +113,33 @@ export function videoEmbed(url) {
   return null;
 }
 
+// Video kapak/thumbnail'i: foto yoksa haber karti + og:image bunu kullanabilsin.
+// YouTube mqdefault = 16:9, siyah bant YOK, her video icin her zaman vardir.
+// Vimeo'nun tahmin edilebilir thumbnail URL'i yok (API gerek) -> null.
+export function videoThumb(url) {
+  const m = YT_ID.exec(String(url ?? ""));
+  return m ? `https://i.ytimg.com/vi/${m[1]}/mqdefault.jpg` : null;
+}
+
+// Bloklari (kolonlar dahil) sirayla tarar, ilk YouTube blogunun thumbnail'ini
+// dondurur. firstImageSrc foto bulamazsa kapak icin buna dusulur.
+export function firstVideoThumb(blocks) {
+  for (const b of (Array.isArray(blocks) ? blocks : [])) {
+    if (!b || typeof b !== "object") continue;
+    const p = b.props || {};
+    if (b.type === "youtube") {
+      const t = videoThumb(p.url);
+      if (t) return t;
+    } else if (b.type === "columns" && Array.isArray(p.children)) {
+      for (const col of p.children) {
+        const nested = firstVideoThumb(Array.isArray(col) ? col : []);
+        if (nested) return nested;
+      }
+    }
+  }
+  return null;
+}
+
 // ---------- stil allowlist'i ----------
 // Sadece bu anahtarlar; her biri kendi dogrulamasindan gecer. Gecersiz deger
 // sessizce atlanir. Hicbir deger url()/expression/; iceremez.

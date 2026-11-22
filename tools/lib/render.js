@@ -4,7 +4,7 @@
 import { escapeHtml, renderMarkdown, toPlainText } from "./sanitize.js";
 import { assertSafeSlug } from "./slug.js";
 import { getType, underType } from "./content-types.js";
-import { renderBlocks, pageCss, firstImageSrc } from "./blocks.js";
+import { renderBlocks, pageCss, firstImageSrc, firstVideoThumb, videoThumb } from "./blocks.js";
 
 export const SITE_URL = "https://www.xr-masters.com";
 export const TITLE_SUFFIX = " • VR Masters, LLC (DBA: XR Masters)";
@@ -172,6 +172,9 @@ export function renderPost({ data, body, slug }, { template, seoGraph, meta, typ
     : data.teaser ? String(data.teaser)
       : data.editor === "blocks" ? "" : toPlainText(body, 160);
   let cover = data.cover ?? null;
+  // Foto kapak yoksa ama kapak VIDEO'su varsa: karti/og:image'i video
+  // thumbnail'ine dusur (kullanici foto yuklemeden de thumbnail gorsun).
+  if (!cover && data.video) cover = videoThumb(data.video);
   const format = data.video ? "video" : "standard";
   const postId = postIdFor(slug);
   const url = postUrl(slug, type.key);
@@ -186,6 +189,8 @@ export function renderPost({ data, body, slug }, { template, seoGraph, meta, typ
     // Kapak (thumbnail) yoksa govdedeki ILK fotografa dus: haber karti + og:image
     // onu kullanir. Ayri thumbnail yuklendiyse ona dokunmayiz.
     if (!cover) cover = firstImageSrc(blocks);
+    // Hala yoksa: govdedeki ILK YouTube blogunun thumbnail'ini kapak yap.
+    if (!cover) cover = firstVideoThumb(blocks);
     // blok stilleri icerige gomulur (sablon .xb-* bilmiyor); canvas ile ayni gorunum
     contentHtml = `<style>${pageCss()}</style>` + renderBlocks(blocks);
   } else {
