@@ -471,11 +471,12 @@ function blockShell(block, arr) {
 }
 
 // Blogun altindaki boslugu (sonraki bloga kadar olan gap) kademeli ayarla.
-// gap = style.marginBottom; yayinlanan sayfadaki CSS varsayilani 20px, o yuzden
-// ilk tiklama o degerden baslar. px() render tarafinda 0-400'e kirpar.
+// gap = style.marginBottom; yayinlanan sayfadaki CSS varsayilani 10px (pageCss
+// .xb-page>*), o yuzden ilk tiklama o degerden baslar. px() render tarafinda
+// 0-400'e kirpar; 0 = bloklar birbirine yapisik.
 function bumpGap(block, delta) {
   pushHistory();
-  const cur = block.props.style.marginBottom ?? 20;
+  const cur = block.props.style.marginBottom ?? 10;
   block.props.style.marginBottom = Math.max(0, Math.min(400, cur + delta));
   markDirty();
   renderCanvas();
