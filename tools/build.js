@@ -114,15 +114,15 @@ function main() {
   // the newest N regardless of publish order:
   //   Featured       = newest 2 tagged "featured" -> "Updates & Recent"
   //                    altindaki 2 BUYUK postun gridine (ayri serit yok)
-  //   Post grid      = newest 9 news posts (HER news postu; featured/media EK
-  //                    yerlesim, postu gridden cikarmaz)
+  //   Post grid      = "most-recent" etiketli en yeni 9 news postu. Etiketsiz
+  //                    (duz) news postu HOMEPAGE'de CIKMAZ, yalniz /news/'de.
   //   Media          = newest 2 tagged "media" (prepended to existing cards)
   // A featured/media post also shows in the grid (shows in BOTH).
   const hasSec = (e, s) => Array.isArray(e.sections) && e.sections.includes(s);
   const newsAll = combined.filter((e) => e.category === "news");
   const featured = newsAll.filter((e) => hasSec(e, "featured")).slice(0, 2);
   const media = newsAll.filter((e) => hasSec(e, "media")).slice(0, 2);
-  const postGrid = newsAll.slice(0, 9);
+  const postGrid = newsAll.filter((e) => hasSec(e, "most-recent")).slice(0, 9);
   // Customer Success: tur farketmez (news/projects), logosu olanlar.
   const custSuccess = newEntries.filter((e) =>
     e.sections.includes("customer-success") && e.logo);
@@ -146,7 +146,9 @@ function main() {
     const base = fs.readFileSync(homeBase, "utf8");
     // Recent 9-grid (desktop-3), Featured 2 buyuk grid (desktop-2), Media, logolar.
     // Gridler kolon-sinifindan ayrildigi icin sira onemsiz.
-    let after = fillRecent(base, postGrid);
+    // "most-recent" etiketli post YOKSA taban (legacy) grid'e dokunma: homepage
+    // bos/kirik gorunmesin. Ilk etiketli post gelince grid onlarla degisir.
+    let after = postGrid.length ? fillRecent(base, postGrid) : base;
     after = fillFeatured(after, featured);
     after = fillMedia(after, media);
     after = fillCustomerSuccess(after, custSuccess);
