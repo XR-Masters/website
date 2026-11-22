@@ -351,7 +351,10 @@ export function renderBlock(block, ctx) {
       return `<figure class="xb-video${vis}"${sa}>`
         + `<div class="xb-video-frame" style="padding-bottom:${pad}">`
         + `<iframe src="${esc(v.src)}" title="Video" loading="lazy" `
-        + `referrerpolicy="no-referrer" allowfullscreen `
+        // referrerpolicy=origin: domeini (xr-masters.com) referer olarak gonderir.
+        // no-referrer kullanirsak YouTube bazi videolarda gomulemeyi dogrulayamaz
+        // ve "video player configuration error" verir (thumbnail bile gelmez).
+        + `referrerpolicy="origin" allowfullscreen `
         + `allow="autoplay; encrypted-media; picture-in-picture"></iframe></div>${cap}</figure>`;
     }
     case "gallery": {

@@ -151,7 +151,9 @@ function embedVideoLinks(html) {
     const src = embedSrc(href);
     if (!src) return whole;                 // normal link: oldugu gibi birak
     return `<div class="xrm-video"><iframe src="${src}" title="Video" `
-      + `loading="lazy" referrerpolicy="no-referrer" allowfullscreen `
+      // referrerpolicy=origin: no-referrer, YouTube'da "video player
+      // configuration error"a yol aciyordu (bkz. blocks.js youtube blogu).
+      + `loading="lazy" referrerpolicy="origin" allowfullscreen `
       + `allow="autoplay; encrypted-media; picture-in-picture"></iframe></div>`;
   });
 }
