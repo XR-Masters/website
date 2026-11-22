@@ -3,7 +3,7 @@ title: "You Can Now Localize with AI Voice Guidance,Without Having To Touch Your
 date: 2026-11-21
 published: 2026-11-22T13:14:12.223Z
 editor: blocks
-sections: "post"
+sections: "post, featured"
 draft: false
 ---
 
