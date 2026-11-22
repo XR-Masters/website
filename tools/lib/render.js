@@ -36,7 +36,11 @@ function isoOf(value) {
 // birden uymaz. Kok-mutlak yol derinlikten bagimsizdir.
 function coverPaths(cover) {
   if (!cover) return null;
-  const clean = String(cover).replace(/^\/+/, "");
+  const s = String(cover);
+  // Harici tam URL (or. YouTube thumbnail, eski WP kapagi): oldugu gibi kullan,
+  // basina SITE_URL EKLEME (yoksa https://site/https://... bozuk olur).
+  if (/^https?:\/\//i.test(s)) return { relative: s, absolute: s };
+  const clean = s.replace(/^\/+/, "");
   return { relative: `/${clean}`, absolute: `${SITE_URL}/${clean}` };
 }
 
