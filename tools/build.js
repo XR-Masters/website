@@ -15,6 +15,8 @@ import { renderPost } from "./lib/render.js";
 import { TYPES, loadTypeAssets } from "./lib/content-types.js";
 import { buildLegacyIndex, sortByDateDesc } from "./lib/legacy.js";
 import { collectPages, buildSitemap, buildRobots } from "./lib/sitemap.js";
+import { prependCards, countCards } from "./lib/listing.js";
+import { fillRecent, fillFeatured, fillMedia, fillCustomerSuccess, ensureCardCss } from "./lib/homepage.js";
 
 const SITE = "site";
 const GEN = path.join("tools", "generated");
@@ -26,7 +28,7 @@ function readMarkdown(dir) {
   for (const file of fs.readdirSync(dir).sort()) {
     if (!file.endsWith(".md")) continue;
     const m = /^(\d{4}-\d{2}-\d{2})-(.+)\.md$/.exec(file);
-    if (!m) throw new Error(`Dosya adi <yyyy-mm-dd>-<slug>.md olmali: ${dir}/${file}`);
+    if (!m) throw new Error(`Filename must be <yyyy-mm-dd>-<slug>.md: ${dir}/${file}`);
     const slug = assertSafeSlug(m[2]);
     const { data, body } = parseFrontmatter(
       fs.readFileSync(path.join(dir, file), "utf8"));
@@ -91,6 +93,70 @@ function main() {
   fs.mkdirSync(GEN, { recursive: true });
   fs.writeFileSync(path.join(GEN, "posts-index.json"),
     JSON.stringify(combined, null, 2), "utf8");
+
+  // Panelden gelen haberleri /news/ gridinin basina ekle. Aksi halde yazi
+  // kendi sayfasini alir ama listede hic gorunmez. Export'tan gelen kartlara
+  // dokunulmaz (bkz. lib/listing.js).
+  const newsPage = path.join(SITE, "news", "index.html");
+  const fresh = newEntries
+    .filter((e) => e.category === "news")
+    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+  if (fresh.length && fs.existsSync(newsPage)) {
+    const before = fs.readFileSync(newsPage, "utf8");
+    const after = prependCards(before, fresh);
+    if (after !== before) fs.writeFileSync(newsPage, after, "utf8");
+    console.log(`news grid  : ${countCards(after)} kart, `
+      + `${fresh.length} yeni basa eklendi`);
+  }
+
+  // Homepage sections are rebuilt from the FULL index by date (newest first);
+  // `combined` is already sortByDateDesc. This makes each section show exactly
+  // the newest N regardless of publish order:
+  //   Featured       = newest 2 tagged "featured" -> "Updates & Recent"
+  //                    altindaki 2 BUYUK postun gridine (ayri serit yok)
+  //   Post grid      = "most-recent" etiketli en yeni 9 news postu. Etiketsiz
+  //                    (duz) news postu HOMEPAGE'de CIKMAZ, yalniz /news/'de.
+  //   Media          = newest 2 tagged "media" (prepended to existing cards)
+  // A featured/media post also shows in the grid (shows in BOTH).
+  const hasSec = (e, s) => Array.isArray(e.sections) && e.sections.includes(s);
+  const newsAll = combined.filter((e) => e.category === "news");
+  const featured = newsAll.filter((e) => hasSec(e, "featured")).slice(0, 2);
+  const media = newsAll.filter((e) => hasSec(e, "media")).slice(0, 2);
+  const postGrid = newsAll.filter((e) => hasSec(e, "most-recent")).slice(0, 9);
+  // Customer Success: tur farketmez (news/projects), logosu olanlar.
+  const custSuccess = newEntries.filter((e) =>
+    e.sections.includes("customer-success") && e.logo);
+  const homePage = path.join(SITE, "index.html");
+  const homeBase = path.join(GEN, "home-base.html");
+  if (fs.existsSync(homePage)) {
+    // PRISTINE TEMEL: homepage HER build TEMIZ temelden uretilir, asla kendi
+    // ciktisindan. Canli container'da runBuild site/index.html'i mutasyona
+    // ugratiyordu; onu kaynak alinca "asagi itilen" featured/media kart kalici
+    // kaybolup silince geri gelmiyordu (stack geri gelmezdi). Temeli bir kez
+    // sakla (Docker ilk build'i COPY'li TEMIZ dosyada calisir); boylece her
+    // build = temel + guncel postlar -> silince onceki otomatik geri gelir.
+    if (!fs.existsSync(homeBase)) {
+      const cur = fs.readFileSync(homePage, "utf8");
+      if (cur.includes("<!--xrm-card-css-->")) {
+        throw new Error("home-base.html yok ama site/index.html zaten enjekte "
+          + "edilmis. Once temiz (commit'li) site/index.html ile build calistir.");
+      }
+      fs.copyFileSync(homePage, homeBase);
+    }
+    const base = fs.readFileSync(homeBase, "utf8");
+    // Recent 9-grid (desktop-3), Featured 2 buyuk grid (desktop-2), Media, logolar.
+    // Gridler kolon-sinifindan ayrildigi icin sira onemsiz.
+    // "most-recent" etiketli post YOKSA taban (legacy) grid'e dokunma: homepage
+    // bos/kirik gorunmesin. Ilk etiketli post gelince grid onlarla degisir.
+    let after = postGrid.length ? fillRecent(base, postGrid) : base;
+    after = fillFeatured(after, featured);
+    after = fillMedia(after, media);
+    after = fillCustomerSuccess(after, custSuccess);
+    after = ensureCardCss(after);              // kapak thumbnail'lerini sabit kutuya oturt
+    fs.writeFileSync(homePage, after, "utf8");
+    console.log(`home       : featured ${featured.length}, post ${postGrid.length}, `
+      + `media ${media.length}, logos ${custSuccess.length}`);
+  }
 
   const pages = collectPages(SITE);
   fs.writeFileSync(path.join(SITE, "sitemap.xml"),

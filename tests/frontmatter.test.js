@@ -64,12 +64,12 @@ test("parseFrontmatter: yorum satiri atlanir", () => {
 test("parseFrontmatter: iki nokta olmayan satir hata verir", () => {
   assert.throws(
     () => parseFrontmatter(`---\ntitle a\n---\nx`),
-    /Frontmatter satiri gecersiz/);
+    /Invalid frontmatter line/);
 });
 
 test("validatePost: zorunlu alanlar", () => {
-  assert.throws(() => validatePost({ date: "2026-01-15" }), /'title' zorunlu/);
-  assert.throws(() => validatePost({ title: "a" }), /'date' zorunlu/);
+  assert.throws(() => validatePost({ date: "2026-01-15" }), /'title' is required/);
+  assert.throws(() => validatePost({ title: "a" }), /'date' is required/);
   assert.equal(validatePost({ title: "a", date: "2026-01-15" }), true);
 });
 
@@ -77,20 +77,20 @@ test("validatePost: tarih formati", () => {
   assert.throws(() => validatePost({ title: "a", date: "15-01-2026" }),
     /YYYY-MM-DD/);
   assert.throws(() => validatePost({ title: "a", date: "2026-13-45" }),
-    /gecerli bir tarih degil/);
+    /is not a valid date/);
   assert.equal(validatePost({ title: "a", date: "2026-01-15T10:30:00+03:00" }), true);
 });
 
 test("validatePost: cover ve video ayni anda olamaz", () => {
   assert.throws(
     () => validatePost({ title: "a", date: "2026-01-15", cover: "x.jpg", video: "https://y" }),
-    /ayni anda olamaz/);
+    /cannot be set at the same time/);
 });
 
 test("validatePost: uzun description reddedilir", () => {
   assert.throws(
     () => validatePost({ title: "a", date: "2026-01-15", description: "x".repeat(301) }),
-    /300 karakteri gecmemeli/);
+    /must not exceed 300 characters/);
 });
 
 test("isDraft: sadece true taslak sayilir", () => {

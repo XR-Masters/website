@@ -85,10 +85,14 @@ export function buildLegacyIndex(dir = POSTS_DIR, { marker = DEFAULT_MARKER } = 
 }
 
 // En yeni once. Tarihi olmayanlar en sona.
+//
+// "published" tam yayin damgasidir (panel postunda ISO zaman); "date" sadece
+// GUN. Ayni gun birden fazla featured/media/post olunca damga ile dogru
+// "en yeni ustte" (stack) sirasi cikar; damgasiz legacy postlar gune gore.
 export function sortByDateDesc(posts) {
+  const stamp = (p) => Date.parse(p.published || p.date || "") || -Infinity;
   return [...posts].sort((a, b) => {
-    const ta = a.date ? Date.parse(a.date) : -Infinity;
-    const tb = b.date ? Date.parse(b.date) : -Infinity;
+    const ta = stamp(a), tb = stamp(b);
     if (tb !== ta) return tb - ta;
     return a.slug.localeCompare(b.slug);
   });

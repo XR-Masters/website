@@ -8,7 +8,7 @@ const GEN = path.join("tools", "generated");
 export const TYPES = {
   news: {
     key: "news",
-    label: "Haberler",
+    label: "Blog",
     // Haberler sitenin KOKUNDE durur: canli URL /<slug>/ seklinde.
     sitePath: "",
     contentDir: path.join("content", "news"),
@@ -22,7 +22,7 @@ export const TYPES = {
   },
   projects: {
     key: "projects",
-    label: "Projeler",
+    label: "Projects",
     sitePath: "xperiences",
     contentDir: path.join("content", "projects"),
     template: "template-projects.html",
@@ -53,7 +53,7 @@ export function loadTypeAssets(key) {
   const need = [t.template, t.seoGraph, t.meta];
   for (const f of need) {
     if (!fs.existsSync(path.join(GEN, f))) {
-      throw new Error(`${f} yok. Once calistir: node tools/extract-templates.js`);
+      throw new Error(`${f} missing. First run: node tools/extract-templates.js`);
     }
   }
   return {
