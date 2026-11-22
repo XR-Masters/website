@@ -394,6 +394,8 @@ function blockShell(block, arr) {
   tb.append(
     tbBtn("↑", "Move up", () => moveBlock(block.id, -1)),
     tbBtn("↓", "Move down", () => moveBlock(block.id, 1)),
+    tbBtn("⇡", "Larger gap below", () => bumpGap(block, 8)),
+    tbBtn("⇣", "Smaller gap below", () => bumpGap(block, -8)),
     tbBtn("⧉", "Duplicate", () => duplicateBlock(block.id)),
     tbBtn("🗑", "Delete", () => removeBlock(block.id)),
   );
@@ -466,6 +468,18 @@ function blockShell(block, arr) {
     endDragGhost();
   };
   return w;
+}
+
+// Blogun altindaki boslugu (sonraki bloga kadar olan gap) kademeli ayarla.
+// gap = style.marginBottom; yayinlanan sayfadaki CSS varsayilani 20px, o yuzden
+// ilk tiklama o degerden baslar. px() render tarafinda 0-400'e kirpar.
+function bumpGap(block, delta) {
+  pushHistory();
+  const cur = block.props.style.marginBottom ?? 20;
+  block.props.style.marginBottom = Math.max(0, Math.min(400, cur + delta));
+  markDirty();
+  renderCanvas();
+  renderSettings();
 }
 
 function tbBtn(txt, title, fn) {
