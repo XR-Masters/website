@@ -259,7 +259,7 @@ function renderPalette(filter = "") {
   const q = filter.trim().toLowerCase();
   for (const cat of CATEGORIES) {
     const types = Object.entries(TYPES).filter(([k, t]) =>
-      t.cat === cat.key && (!q || t.label.toLowerCase().includes(q) || k.includes(q)));
+      !t.hidden && t.cat === cat.key && (!q || t.label.toLowerCase().includes(q) || k.includes(q)));
     if (!types.length) continue;
     const h = document.createElement("div");
     h.className = "bld-cat";

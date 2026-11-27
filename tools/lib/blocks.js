@@ -216,7 +216,9 @@ export const TYPES = {
     ],
   },
   list: {
-    label: "List", cat: "text", icon: "•", inlineEdit: "text",
+    // Palette'ten gizli: liste artik Text blogunun ici (rtbar liste butonlari).
+    // Tip korunuyor ki eski list bloklari render/edit edilebilsin (geriye donuk).
+    label: "List", cat: "text", icon: "•", inlineEdit: "text", hidden: true,
     fields: [
       { k: "items", type: "textarea", label: "Items (one per line)", def: "First\nSecond\nThird" },
       { k: "ordered", type: "bool", label: "Numbered", def: false },
