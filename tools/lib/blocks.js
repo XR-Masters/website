@@ -216,7 +216,7 @@ export const TYPES = {
     ],
   },
   list: {
-    label: "List", cat: "text", icon: "•",
+    label: "List", cat: "text", icon: "•", inlineEdit: "text",
     fields: [
       { k: "items", type: "textarea", label: "Items (one per line)", def: "First\nSecond\nThird" },
       { k: "ordered", type: "bool", label: "Numbered", def: false },
@@ -349,8 +349,12 @@ export function renderBlock(block, ctx) {
     }
     case "list": {
       const tag = p.ordered ? "ol" : "ul";
-      const items = String(p.items ?? "").split("\n").map((s) => s.trim()).filter(Boolean)
-        .map((s) => `<li>${inline(s)}</li>`).join("");
+      // Yeni: satir-ici zengin duzenleme -> props.html (<li>..</li>). Eski bloklar:
+      // props.items (satir basina bir oge) -> geriye donuk uretim.
+      const items = (p.html != null && p.html !== "")
+        ? sanitizeRich(p.html, { inlineOnly: false })
+        : String(p.items ?? "").split("\n").map((s) => s.trim()).filter(Boolean)
+            .map((s) => `<li>${inline(s)}</li>`).join("");
       return `<${tag} class="xb-list${vis}"${sa}>${items}</${tag}>`;
     }
     case "button": {

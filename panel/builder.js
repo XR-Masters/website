@@ -15,6 +15,10 @@ import { sanitizeRich, richToText, FONT_CHOICES, SIZE_CHOICES } from "/lib/richt
 const $ = (id) => document.getElementById(id);
 const SAME = { credentials: "same-origin" };
 
+// Blok-seviye zengin metin (p/liste etiketleri) kabul eden tipler. Digerleri
+// yalniz satir-ici (b/i/span) alir -> liste bu bloklarda anlamli.
+const isBlockLevel = (type) => type === "text" || type === "callout" || type === "list";
+
 // Blok gorunumu canvas'ta da yayinlanan sayfadaki gibi olsun: ortak stili ekle.
 const styleEl = document.createElement("style");
 styleEl.id = "xb-page-style";
@@ -427,7 +431,7 @@ function blockShell(block, arr) {
       });
       // Word tarzi bicimlendirme: innerHTML'i KATI beyaz listeden gecirip
       // props.html olarak sakla. text/callout blok etiketi (p/liste) de alabilir.
-      const inlineOnly = !(block.type === "text" || block.type === "callout");
+      const inlineOnly = !isBlockLevel(block.type);
       el.onfocus = () => {
         showRtbar(true);
         // Henuz duzenlenmemis (varsayilan metinli) bloga tiklayinca metni TUMUYLE
@@ -1056,7 +1060,7 @@ function commitRich() {
   const el = document.querySelector(".bld-block.sel .bld-editable") || document.querySelector(".bld-editable:focus");
   const b = getSel();
   if (!el || !b) return;
-  const inlineOnly = !(b.type === "text" || b.type === "callout");
+  const inlineOnly = !isBlockLevel(b.type);
   pushHistory();
   b.props.html = sanitizeRich(el.innerHTML, { inlineOnly });
   delete b.props.text;
@@ -1076,6 +1080,9 @@ function bumpSize(delta) {
 function updateRtbar() {
   const b = getSel();
   $("bld-rtbar").hidden = !(b && TYPES[b.type] && TYPES[b.type].inlineEdit);
+  // Liste butonlari yalniz blok-seviye bloklarda anlamli (text/callout/list).
+  const blockLevel = !!(b && isBlockLevel(b.type));
+  for (const el of document.querySelectorAll(".bld-rt-list")) el.hidden = !blockLevel;
 }
 function showRtbar(on) { if (on) $("bld-rtbar").hidden = false; }
 
